@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gématrie · Isopséphie · Primosophie — Atelier de croisements</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a22; --panel2:#1e222c; --line:#2a2f3a;
+    --txt:#e8eaf0; --muted:#9aa3b2; --accent:#c9a44a; --accent2:#6ea8fe;
+    --heb:#7ed3a0; --grk:#6ea8fe; --lat:#c9a44a; --primo:#e07a9b;
+    --hit:#3a2f1a; --hitline:#c9a44a;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;font-weight:600;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:13px}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 24px 80px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .card h2{font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 12px}
+  textarea,input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:10px 12px;font-size:16px;font-family:inherit}
+  textarea{min-height:64px;resize:vertical}
+  button{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px 14px;cursor:pointer;font-size:14px;font-family:inherit}
+  button:hover{border-color:var(--accent);color:#fff}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#1a1407;font-weight:600}
+  button.primary:hover{filter:brightness(1.08)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  td.val{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+  .tag{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:middle}
+  .t-heb{background:var(--heb)} .t-grk{background:var(--grk)} .t-lat{background:var(--lat)} .t-primo{background:var(--primo)}
+  .muted{color:var(--muted)}
+  .results td:first-child{color:var(--muted)}
+  .scriptbadge{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .toolbar input[type=text]{max-width:260px}
+  .count{margin-left:auto;color:var(--muted);font-size:13px}
+  .collection td{vertical-align:top}
+  .collection .word{font-weight:600}
+  .vals{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+  .chip{font-size:11px;padding:1px 7px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);font-variant-numeric:tabular-nums}
+  .chip b{color:var(--txt)}
+  .chip.hit{background:var(--hit);border-color:var(--hitline);color:var(--accent)}
+  .del{color:var(--muted);cursor:pointer;border:none;background:none;font-size:16px;padding:2px 6px}
+  .del:hover{color:#e07a9b}
+  details summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:6px}
+  .matchgroup{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:var(--panel2)}
+  .matchgroup .head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .matchgroup .v{font-size:18px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .matchgroup .words{display:flex;flex-wrap:wrap;gap:6px}
+  .mword{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 9px;font-size:13px}
+  .mword .s{color:var(--muted);font-size:11px;margin-left:5px}
+  .empty{color:var(--muted);font-style:italic;padding:18px 4px}
+  .tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+  .tabs button{border-radius:8px 8px 0 0;border-bottom:none}
+  .tabs button.active{background:var(--panel);color:var(--accent);border-color:var(--line)}
+  .tabpane{display:none}
+  .tabpane.active{display:block}
+  .editgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}
+  .editgrid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+  .editgrid input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px;font-size:14px;text-align:center;font-variant-numeric:tabular-nums}
+  .warn{background:#2a1f12;border:1px solid #5a4420;color:#e0c089;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:14px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+  select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 10px;font-size:14px}
+  a{color:var(--accent2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>⟡ Atelier Gématrie · Isopséphie · Primosophie</h1>
+  <span class="sub">Calcul multi-systèmes · accumulation locale · croisements automatiques</span>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-tab="calc">Calculateur</button>
+    <button class="tab" data-tab="collection">Collection &amp; croisements</button>
+    <button class="tab" data-tab="settings">Tables &amp; réglages</button>
+    <button class="tab" data-tab="about">À propos</button>
+  </div>
+
+  <!-- ============ CALCULATEUR ============ -->
+  <div class="tabpane active" id="tab-calc">
+    <div class="grid">
+      <div class="card">
+        <h2>Saisie</h2>
+        <textarea id="input" placeholder="Tapez un mot ou une phrase…&#10;Français/latin, hébreu (אמת) ou grec (λογος)"></textarea>
+        <div class="row">
+          <span class="scriptbadge" id="scriptBadge">—</span>
+          <label class="pill"><input type="checkbox" id="optAccents" checked> ignorer accents (é→e, ç→c)</label>
+          <button class="primary" id="btnSave">＋ Enregistrer dans la collection</button>
+        </div>
+        <div class="legend">
+          <span><span class="tag t-lat"></span>Latin/Français</span>
+          <span><span class="tag t-primo"></span>Primosophie</span>
+          <span><span class="tag t-heb"></span>Hébreu</span>
+          <span><span class="tag t-grk"></span>Grec</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Valeurs calculées</h2>
+        <table class="results"><tbody id="resultBody">
+          <tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ COLLECTION ============ -->
+  <div class="tabpane" id="tab-collection">
+    <div class="card" style="margin-bottom:18px">
+      <div class="toolbar">
+        <input type="text" id="search" placeholder="Filtrer…">
+        <select id="filterSystem"><option value="">Tous les systèmes</option></select>
+        <button id="btnExport">⬇ Exporter JSON</button>
+        <button id="btnImport">⬆ Importer JSON</button>
+        <button id="btnClear">🗑 Tout effacer</button>
+        <input type="file" id="fileImport" accept="application/json" style="display:none">
+        <span class="count" id="collCount"></span>
+      </div>
+      <table class="collection"><thead><tr><th>Entrée</th><th>Valeurs</th><th></th></tr></thead>
+        <tbody id="collBody"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Croisements automatiques</h2>
+      <div class="row" style="margin-top:0;margin-bottom:14px">
+        <label class="pill"><input type="radio" name="xmode" value="same" checked> même système</label>
+        <label class="pill"><input type="radio" name="xmode" value="cross"> valeur partagée (tous systèmes)</label>
+        <span class="muted" style="font-size:12px">Groupes d'entrées ayant une valeur identique.</span>
+      </div>
+      <div id="matches"></div>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS ============ -->
+  <div class="tabpane" id="tab-settings">
+    <div class="warn">⚠️ La table <b>Primosophie</b> est rétro-déduite (A=1 puis suite des nombres premiers) et vérifiée sur <code>bien=mal=69</code>. À confronter au livre de Mathieu Laveau. Vous pouvez la corriger ici — les modifications sont sauvegardées et recalculent tout.</div>
+    <div class="card" style="margin-bottom:18px">
+      <h2>Table Primosophie (éditable)</h2>
+      <div class="editgrid" id="primoEdit"></div>
+      <div class="row"><button id="btnPrimoReset">↺ Réinitialiser (valeurs par défaut)</button></div>
+    </div>
+    <div class="card">
+      <h2>Méthodes hébraïques actives</h2>
+      <div class="row" id="hebToggles" style="margin-top:0"></div>
+      <p class="muted" style="font-size:13px">Décochez pour alléger l'affichage. Le calcul reste disponible pour les croisements.</p>
+    </div>
+  </div>
+
+  <!-- ============ ABOUT ============ -->
+  <div class="tabpane" id="tab-about">
+    <div class="card">
+      <h2>Méthode &amp; honnêteté</h2>
+      <p>Cet atelier calcule la valeur numérique d'un texte selon plusieurs traditions, accumule vos entrées localement (dans le navigateur) et repère automatiquement les <b>croisements</b> : entrées de même valeur.</p>
+      <ul class="muted">
+        <li><b>Hébreu &amp; grec</b> : conventions millénaires, fiabilité élevée.</li>
+        <li><b>Latin ordinal / réduction pythagoricienne</b> : standards.</li>
+        <li><b>Primosophie</b> (Vermard / Laveau) : table déduite, <b>à valider sur le livre</b>.</li>
+      </ul>
+      <p class="muted" style="font-size:13px">⚠️ Plus on multiplie méthodes et langues, plus deux mots quelconques finissent par « se croiser » : le biais de confirmation est inévitable. À utiliser comme exploration symbolique, pas comme preuve. Détails dans <code>RAPPORT-RECHERCHE.md</code>.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== TABLES DE CALCUL ===================== */
+const HEB_ORDER = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת'];
+const HEB_STD_BASE = {א:1,ב:2,ג:3,ד:4,ה:5,ו:6,ז:7,ח:8,ט:9,י:10,כ:20,ל:30,מ:40,נ:50,ס:60,ע:70,פ:80,צ:90,ק:100,ר:200,ש:300,ת:400};
+// finales -> lettre de base
+const HEB_FINAL = {'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'};
+const HEB_FINAL_GADOL = {'ך':500,'ם':600,'ן':700,'ף':800,'ץ':900};
+const GREEK = {α:1,β:2,γ:3,δ:4,ε:5,ζ:7,η:8,θ:9,ι:10,κ:20,λ:30,μ:40,ν:50,ξ:60,ο:70,π:80,ρ:100,σ:200,ς:200,τ:300,υ:400,φ:500,χ:600,ψ:700,ω:800,'ϛ':6,'ϝ':6,'ϟ':90,'ϙ':90,'ϡ':900};
+
+const PRIMO_DEFAULT = {A:1,B:2,C:3,D:5,E:7,F:11,G:13,H:17,I:19,J:23,K:29,L:31,M:37,N:41,O:43,P:47,Q:53,R:59,S:61,T:67,U:71,V:73,W:79,X:83,Y:89,Z:97};
+
+/* ===================== ÉTAT ===================== */
+let primo = loadJSON('primoTable', {...PRIMO_DEFAULT});
+let collection = loadJSON('collection', []);
+let hebActive = loadJSON('hebActive', {heb_std:true,heb_gadol:true,heb_ordinal:true,heb_katan:true,heb_katanm:true,heb_atbash:false});
+
+function loadJSON(k,def){try{const v=localStorage.getItem('gem_'+k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function save(k,v){localStorage.setItem('gem_'+k,JSON.stringify(v));}
+
+/* ===================== UTILITAIRES ===================== */
+const stripAccents = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'');
+function digitRoot(n){ if(n<=0) return 0; return 1+((n-1)%9); }
+function katanLetter(v){ while(v>=10 && v%10===0) v=v/10; return v; } // 10->1,100->1,200->2,400->4
+
+function detectScript(t){
+  if(/[֐-׿]/.test(t)) return 'heb';
+  if(/[Ͱ-Ͽἀ-῿]/.test(t)) return 'grk';
+  if(/[A-Za-zÀ-ÿ]/.test(t)) return 'lat';
+  return 'none';
+}
+
+/* ===================== MOTEUR ===================== */
+// renvoie {systemKey: value} pour tous les systèmes applicables
+function compute(text, ignoreAccents){
+  const out={};
+  const script = detectScript(text);
+
+  // --- LATIN / FRANÇAIS / PRIMOSOPHIE ---
+  let latin = (ignoreAccents? stripAccents(text):text).toUpperCase().replace(/[^A-Z]/g,'');
+  if(latin.length){
+    let ord=0,pyth=0,pr=0;
+    for(const ch of latin){
+      const pos = ch.charCodeAt(0)-64;            // A=1..Z=26
+      ord += pos;
+      pyth += digitRoot(pos);
+      pr += (primo[ch]||0);
+    }
+    out.lat_ord = ord;
+    out.lat_pyth = pyth;
+    out.lat_pyth_red = digitRoot(pyth);
+    out.primo = pr;
+  }
+
+  // --- HÉBREU ---
+  const hebChars=[...text].filter(c=>/[֐-׿]/.test(c) && (HEB_STD_BASE[c]||HEB_FINAL[c]));
+  if(hebChars.length){
+    let std=0,gadol=0,ord=0,katan=0;
+    for(const c of hebChars){
+      const base = HEB_FINAL[c]||c;
+      const bv = HEB_STD_BASE[base];
+      std += bv;
+      gadol += (HEB_FINAL_GADOL[c]!==undefined? HEB_FINAL_GADOL[c] : bv);
+      ord += HEB_ORDER.indexOf(base)+1;
+      katan += katanLetter(bv);
+      // atbash
+    }
+    let atbash=0;
+    for(const c of hebChars){
+      const base = HEB_FINAL[c]||c;
+      const idx = HEB_ORDER.indexOf(base);
+      atbash += HEB_STD_BASE[HEB_ORDER[21-idx]];
+    }
+    out.heb_std=std; out.heb_gadol=gadol; out.heb_ordinal=ord;
+    out.heb_katan=katan; out.heb_katanm=digitRoot(std);
+    out.heb_atbash=atbash; out.heb_kolel=std+1;
+  }
+
+  // --- GREC ---
+  const grk=[...text.toLowerCase()].filter(c=>GREEK[c]!==undefined);
+  if(grk.length){ out.grk = grk.reduce((a,c)=>a+GREEK[c],0); }
+
+  return {script, values:out};
+}
+
+const SYS_META = {
+  lat_ord:{label:'Latin ordinal (A=1…Z=26)',cls:'t-lat',grp:'lat'},
+  lat_pyth:{label:'Réduction pythagoricienne',cls:'t-lat',grp:'lat'},
+  lat_pyth_red:{label:'Pythagore (réduit 1 chiffre)',cls:'t-lat',grp:'lat'},
+  primo:{label:'Primosophie',cls:'t-primo',grp:'primo'},
+  heb_std:{label:'Hébreu — Mispar Hechrachi (std)',cls:'t-heb',grp:'heb'},
+  heb_gadol:{label:'Hébreu — Mispar Gadol',cls:'t-heb',grp:'heb'},
+  heb_ordinal:{label:'Hébreu — Mispar Siduri (ordinal)',cls:'t-heb',grp:'heb'},
+  heb_katan:{label:'Hébreu — Mispar Katan',cls:'t-heb',grp:'heb'},
+  heb_katanm:{label:'Hébreu — Katan Mispari (réduit)',cls:'t-heb',grp:'heb'},
+  heb_atbash:{label:'Hébreu — AtBash',cls:'t-heb',grp:'heb'},
+  heb_kolel:{label:'Hébreu — Mispar Kolel (+1)',cls:'t-heb',grp:'heb'},
+  grk:{label:'Grec — Isopséphie',cls:'t-grk',grp:'grk'}
+};
+const HEB_SYS = ['heb_std','heb_gadol','heb_ordinal','heb_katan','heb_katanm','heb_atbash'];
+
+// systèmes à afficher selon les réglages
+function visibleSystems(values){
+  return Object.keys(values).filter(k=>{
+    if(k==='heb_kolel') return false; // affiché à part / dispo croisements
+    if(HEB_SYS.includes(k)) return hebActive[k];
+    return true;
+  });
+}
+
+/* ===================== UI : CALCULATEUR ===================== */
+const $ = id=>document.getElementById(id);
+const input=$('input'), resultBody=$('resultBody'), scriptBadge=$('scriptBadge');
+
+function renderResults(){
+  const txt=input.value.trim();
+  const ignore=$('optAccents').checked;
+  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; return; }
+  const {script,values}=compute(txt,ignore);
+  scriptBadge.textContent = {heb:'Hébreu détecté',grk:'Grec détecté',lat:'Latin / Français',none:'—'}[script];
+  const keys=Object.keys(values).filter(k=>k!=='heb_kolel');
+  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Aucune lettre reconnue.</td></tr>'; return; }
+  resultBody.innerHTML = keys.map(k=>{
+    const m=SYS_META[k];
+    return `<tr><td><span class="tag ${m.cls}"></span>${m.label}</td><td class="val">${values[k]}</td></tr>`;
+  }).join('');
+}
+input.addEventListener('input',renderResults);
+$('optAccents').addEventListener('change',renderResults);
+
+$('btnSave').addEventListener('click',()=>{
+  const txt=input.value.trim(); if(!txt) return;
+  const ignore=$('optAccents').checked;
+  const {script,values}=compute(txt,ignore);
+  if(!Object.keys(values).length) return;
+  collection.unshift({id:Date.now()+'-'+Math.round(performance.now()),text:txt,script,ignore,values});
+  save('collection',collection);
+  input.value=''; renderResults(); renderCollection(); renderMatches();
+  flash($('btnSave'),'✓ Enregistré');
+});
+function flash(btn,msg){const o=btn.textContent;btn.textContent=msg;setTimeout(()=>btn.textContent=o,1100);}
+
+/* ===================== UI : COLLECTION ===================== */
+const collBody=$('collBody'), search=$('search'), filterSystem=$('filterSystem');
+
+function populateSystemFilter(){
+  const cur=filterSystem.value;
+  filterSystem.innerHTML='<option value="">Tous les systèmes</option>'+
+    Object.keys(SYS_META).filter(k=>k!=='heb_kolel').map(k=>`<option value="${k}">${SYS_META[k].label}</option>`).join('');
+  filterSystem.value=cur;
+}
+
+// index des valeurs -> pour surligner les croisements
+function buildHitIndex(){
+  const same={}, cross={}; // same: "sys|val" -> count ; cross: val -> Set(text)
+  collection.forEach(e=>{
+    Object.entries(e.values).forEach(([k,v])=>{
+      if(k==='heb_kolel'||k==='lat_pyth_red'||k==='heb_katanm') {/* inclure quand même */ }
+      same[k+'|'+v]=(same[k+'|'+v]||0)+1;
+      (cross[v]=cross[v]||new Set()).add(e.id);
+    });
+  });
+  return {same,cross};
+}
+
+function renderCollection(){
+  populateSystemFilter();
+  const q=search.value.trim().toLowerCase();
+  const fsys=filterSystem.value;
+  const {same}=buildHitIndex();
+  let list=collection;
+  if(q) list=list.filter(e=>e.text.toLowerCase().includes(q));
+  if(fsys) list=list.filter(e=>e.values[fsys]!==undefined);
+  $('collCount').textContent = `${collection.length} entrée${collection.length>1?'s':''}`;
+  if(!list.length){ collBody.innerHTML='<tr><td colspan="3" class="empty">Aucune entrée.</td></tr>'; return; }
+  collBody.innerHTML=list.map(e=>{
+    const chips=visibleSystems(e.values).map(k=>{
+      const m=SYS_META[k]; const v=e.values[k];
+      const hit = same[k+'|'+v]>1;
+      return `<span class="chip ${hit?'hit':''}" title="${m.label}"><span class="tag ${m.cls}" style="width:7px;height:7px"></span>${shortSys(k)} <b>${v}</b></span>`;
+    }).join('');
+    return `<tr><td class="word">${escapeHtml(e.text)}<div class="muted" style="font-size:11px">${{heb:'hébreu',grk:'grec',lat:'latin'}[e.script]||''}</div></td>
+      <td><div class="vals">${chips}</div></td>
+      <td><button class="del" data-id="${e.id}" title="Supprimer">✕</button></td></tr>`;
+  }).join('');
+  collBody.querySelectorAll('.del').forEach(b=>b.onclick=()=>{
+    collection=collection.filter(x=>x.id!==b.dataset.id); save('collection',collection);
+    renderCollection(); renderMatches();
+  });
+}
+function shortSys(k){return {lat_ord:'ord',lat_pyth:'pyth',lat_pyth_red:'pyth↓',primo:'primo',heb_std:'héb',heb_gadol:'gadol',heb_ordinal:'sidur',heb_katan:'katan',heb_katanm:'katan↓',heb_atbash:'atbash',heb_kolel:'kolel',grk:'grec'}[k]||k;}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+search.addEventListener('input',renderCollection);
+filterSystem.addEventListener('change',renderCollection);
+
+/* ===================== UI : CROISEMENTS ===================== */
+function renderMatches(){
+  const mode=document.querySelector('input[name=xmode]:checked').value;
+  const box=$('matches');
+  const groups=[];
+  if(mode==='same'){
+    const map={}; // "sys|val" -> [entries]
+    collection.forEach(e=>Object.entries(e.values).forEach(([k,v])=>{
+      const key=k+'|'+v; (map[key]=map[key]||[]).push({e,sys:k,v});
+    }));
+    Object.values(map).forEach(arr=>{
+      const uniq=new Set(arr.map(a=>a.e.id));
+      if(uniq.size>1) groups.push({v:arr[0].v,sys:arr[0].sys,items:dedupe(arr)});
+    });
+    groups.sort((a,b)=>b.items.length-a.items.length || a.v-b.v);
+  } else {
+    const map={}; // val -> [{e,sys}]
+    collection.forEach(e=>Object.entries(e.values).forEach(([k,v])=>{
+      (map[v]=map[v]||[]).push({e,sys:k,v});
+    }));
+    Object.entries(map).forEach(([v,arr])=>{
+      const uniq=new Set(arr.map(a=>a.e.id));
+      if(uniq.size>1) groups.push({v:+v,sys:null,items:dedupe(arr)});
+    });
+    groups.sort((a,b)=>b.items.length-a.items.length || a.v-b.v);
+  }
+  if(!groups.length){ box.innerHTML='<div class="empty">Pas encore de croisement. Ajoutez des entrées de même valeur.</div>'; return; }
+  box.innerHTML=groups.map(g=>{
+    const words=g.items.map(it=>`<span class="mword">${escapeHtml(it.e.text)}<span class="s">${shortSys(it.sys)}</span></span>`).join('');
+    const sysLabel = g.sys? SYS_META[g.sys].label : 'toutes méthodes confondues';
+    return `<div class="matchgroup"><div class="head"><span class="v">${g.v}</span><span class="muted">${sysLabel} · ${new Set(g.items.map(i=>i.e.id)).size} entrées</span></div><div class="words">${words}</div></div>`;
+  }).join('');
+}
+function dedupe(arr){ // garde une occurrence par (entrée,système) pour affichage lisible
+  const seen=new Set(),out=[];
+  arr.forEach(a=>{const k=a.e.id+'|'+a.sys; if(!seen.has(k)){seen.add(k);out.push(a);}});
+  return out;
+}
+document.querySelectorAll('input[name=xmode]').forEach(r=>r.addEventListener('change',renderMatches));
+
+/* ===================== EXPORT / IMPORT ===================== */
+$('btnExport').onclick=()=>{
+  const data={version:1,exported:new Date().toISOString(),primo,collection};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='gematrie-collection.json'; a.click();
+};
+$('btnImport').onclick=()=>$('fileImport').click();
+$('fileImport').onchange=ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{try{
+    const d=JSON.parse(r.result);
+    if(Array.isArray(d.collection)){
+      // fusion : on évite les doublons stricts texte+script
+      const existing=new Set(collection.map(e=>e.text+'|'+e.script));
+      d.collection.forEach(e=>{ if(!existing.has(e.text+'|'+e.script)){collection.push(e);} });
+      save('collection',collection);
+    }
+    if(d.primo){ primo={...primo,...d.primo}; save('primoTable',primo); recomputeAll(); buildPrimoEditor(); }
+    renderCollection(); renderMatches();
+    alert('Import réussi.');
+  }catch(e){alert('Fichier invalide.');}};
+  r.readAsText(f); ev.target.value='';
+};
+$('btnClear').onclick=()=>{ if(confirm('Effacer toute la collection ?')){collection=[];save('collection',collection);renderCollection();renderMatches();} };
+
+/* ===================== SETTINGS ===================== */
+function buildPrimoEditor(){
+  const g=$('primoEdit'); const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  g.innerHTML=letters.map(L=>`<label>${L}<input type="number" data-l="${L}" value="${primo[L]}"></label>`).join('');
+  g.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{
+    primo[inp.dataset.l]=parseInt(inp.value)||0; save('primoTable',primo); recomputeAll();
+  });
+}
+$('btnPrimoReset').onclick=()=>{ primo={...PRIMO_DEFAULT}; save('primoTable',primo); buildPrimoEditor(); recomputeAll(); };
+
+function buildHebToggles(){
+  const box=$('hebToggles');
+  box.innerHTML=HEB_SYS.map(k=>`<label class="pill"><input type="checkbox" data-k="${k}" ${hebActive[k]?'checked':''}> ${SYS_META[k].label}</label>`).join('');
+  box.querySelectorAll('input').forEach(c=>c.onchange=()=>{
+    hebActive[c.dataset.k]=c.checked; save('hebActive',hebActive); renderCollection(); renderResults();
+  });
+}
+
+// recalcule toutes les entrées (après modif d'une table)
+function recomputeAll(){
+  collection=collection.map(e=>{ const {values}=compute(e.text,e.ignore); return {...e,values}; });
+  save('collection',collection); renderCollection(); renderMatches(); renderResults();
+}
+
+/* ===================== TABS ===================== */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tabpane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); $('tab-'+t.dataset.tab).classList.add('active');
+});
+
+/* ===================== INIT ===================== */
+buildPrimoEditor(); buildHebToggles(); renderCollection(); renderMatches(); renderResults();
+</script>
+</body>
+</html>
