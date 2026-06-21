@@ -85,6 +85,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="calc">Calculateur</button>
     <button class="tab" data-tab="collection">Collection &amp; croisements</button>
+    <button class="tab" data-tab="numbers">Nombres remarquables</button>
     <button class="tab" data-tab="settings">Tables &amp; réglages</button>
     <button class="tab" data-tab="about">À propos</button>
   </div>
@@ -150,6 +151,33 @@
     </div>
   </div>
 
+  <!-- ============ NOMBRES REMARQUABLES ============ -->
+  <div class="tabpane" id="tab-numbers">
+    <div class="card" style="margin-bottom:18px">
+      <h2>Nombres cibles</h2>
+      <p class="muted" style="font-size:13px;margin-top:-4px">L'app cherche des <b>additions de mots</b> de votre collection dont la somme tombe exactement sur l'un de ces nombres.</p>
+      <div id="targetChips" class="row" style="margin-top:4px"></div>
+      <div class="row">
+        <input type="text" id="newTarget" placeholder="ajouter un nombre…" style="max-width:160px">
+        <button id="btnAddTarget">＋ Ajouter</button>
+        <button id="btnResetTargets">↺ Défauts (111…999)</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="row" style="margin-top:0">
+        <label class="pill">Système&nbsp;<select id="numSystem"></select></label>
+        <label class="pill">Combinaison max&nbsp;<select id="numMaxK"><option>1</option><option selected>2</option><option>3</option><option>4</option></select> mot(s)</label>
+        <button class="primary" id="btnFindLinks">🔎 Chercher les liens</button>
+        <span class="muted" id="linksCount" style="font-size:12px"></span>
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:6px">Astuce : plus la combinaison est grande, plus on trouve de liens — mais moins ils sont signifiants. Commencez à 2–3 mots.</p>
+    </div>
+    <div class="card">
+      <h2>Liens trouvés</h2>
+      <div id="linksResult"><div class="empty">Cliquez sur « Chercher les liens ».</div></div>
+    </div>
+  </div>
+
   <!-- ============ SETTINGS ============ -->
   <div class="tabpane" id="tab-settings">
     <div class="warn">⚠️ La table <b>Primosophie</b> est rétro-déduite (A=1 puis suite des nombres premiers) et vérifiée sur <code>bien=mal=69</code>. À confronter au livre de Mathieu Laveau. Vous pouvez la corriger ici — les modifications sont sauvegardées et recalculent tout.</div>
@@ -198,6 +226,7 @@ const PRIMO_DEFAULT = {A:1,B:2,C:3,D:5,E:7,F:11,G:13,H:17,I:19,J:23,K:29,L:31,M:
 let primo = loadJSON('primoTable', {...PRIMO_DEFAULT});
 let collection = loadJSON('collection', []);
 let hebActive = loadJSON('hebActive', {heb_std:true,heb_gadol:true,heb_ordinal:true,heb_katan:true,heb_katanm:true,heb_atbash:false});
+let targets = loadJSON('targets', [111,222,333,444,555,666,777,888,999]);
 
 function loadJSON(k,def){try{const v=localStorage.getItem('gem_'+k);return v?JSON.parse(v):def;}catch(e){return def;}}
 function save(k,v){localStorage.setItem('gem_'+k,JSON.stringify(v));}
@@ -508,11 +537,77 @@ function recomputeAll(){
   save('collection',collection); renderCollection(); renderMatches(); renderResults();
 }
 
+/* ===================== NOMBRES REMARQUABLES ===================== */
+function renderTargetChips(){
+  const box=$('targetChips');
+  const sorted=targets.slice().sort((a,b)=>a-b);
+  box.innerHTML = sorted.length
+    ? sorted.map(t=>`<span class="chip" style="font-size:13px">${t} <span class="del" data-t="${t}" style="font-size:13px;padding:0 4px">✕</span></span>`).join('')
+    : '<span class="muted">Aucun nombre cible.</span>';
+  box.querySelectorAll('.del').forEach(b=>b.onclick=()=>{ targets=targets.filter(x=>x!==+b.dataset.t); save('targets',targets); renderTargetChips(); });
+}
+function populateNumSystem(){
+  $('numSystem').innerHTML='<option value="">Tous</option>'+SYSTEMS.map(k=>`<option value="${k}">${COL_HEAD[k]}</option>`).join('');
+}
+
+// recherche toutes les additions de 1..maxK mots dont la somme ∈ cibles
+function findLinks(){
+  const sysSel=$('numSystem').value;
+  const maxK=+$('numMaxK').value;
+  const sysList = sysSel? [sysSel] : SYSTEMS;
+  const box=$('linksResult');
+  if(!targets.length){ box.innerHTML='<div class="empty">Ajoutez au moins un nombre cible.</div>'; $('linksCount').textContent=''; return; }
+  const targetSet=new Set(targets);
+  const maxTarget=Math.max(...targets);
+  const byTarget={}; let total=0;
+  sysList.forEach(S=>{
+    const items=collection.filter(e=>e.values[S]!==undefined).map(e=>({t:e.text,v:e.values[S]}));
+    const n=items.length, idx=[];
+    (function dfs(start,sum,depth){
+      if(depth>0 && targetSet.has(sum)){
+        (byTarget[sum]=byTarget[sum]||{});
+        (byTarget[sum][S]=byTarget[sum][S]||[]).push(idx.map(i=>items[i].t));
+        total++;
+      }
+      if(depth===maxK) return;
+      for(let i=start;i<n;i++){
+        const ns=sum+items[i].v;
+        if(ns>maxTarget) continue;            // élagage : valeurs positives
+        idx.push(i); dfs(i+1,ns,depth+1); idx.pop();
+      }
+    })(0,0,0);
+  });
+  renderLinks(byTarget,total);
+}
+function renderLinks(byTarget,total){
+  const box=$('linksResult');
+  const tlist=Object.keys(byTarget).map(Number).sort((a,b)=>a-b);
+  $('linksCount').textContent = total? `${total} lien(s) trouvé(s)` : '';
+  if(!tlist.length){ box.innerHTML='<div class="empty">Aucun lien trouvé pour ces nombres avec la collection actuelle.</div>'; return; }
+  const CAP=80;
+  const warn = total>500 ? `<div class="warn">${total} liens, c'est trop pour être signifiant. Réduisez « Combinaison max » à <b>2</b>, ou ciblez moins de nombres. Les liens vraiment forts sont les <b>mots seuls</b> (= cible) et les <b>paires</b> sur Primosophie ou Ordinal.</div>` : '';
+  box.innerHTML = warn + tlist.map(T=>{
+    const sysObj=byTarget[T];
+    const blocks=Object.keys(sysObj).map(S=>{
+      const combos=sysObj[S].sort((a,b)=>a.length-b.length);
+      const lines=combos.slice(0,CAP).map(c=>`<div style="margin:3px 0">${c.map(escapeHtml).join(' <span class="muted">+</span> ')} <span class="muted">= ${T}</span></div>`).join('');
+      const extra=combos.length>CAP? `<div class="muted" style="font-size:12px">… +${combos.length-CAP} autres</div>`:'';
+      return `<div style="margin:6px 0 10px"><div class="muted" style="font-size:12px;margin-bottom:3px"><span class="tag ${SYS_META[S].cls}"></span>${SYS_META[S].label} · ${combos.length}</div>${lines}${extra}</div>`;
+    }).join('');
+    return `<div class="matchgroup"><div class="head"><span class="v">${T}</span></div>${blocks}</div>`;
+  }).join('');
+}
+$('btnAddTarget').onclick=()=>{ const v=parseInt($('newTarget').value,10); if(v>0 && !targets.includes(v)){targets.push(v);save('targets',targets);renderTargetChips();} $('newTarget').value=''; };
+$('newTarget').addEventListener('keydown',e=>{ if(e.key==='Enter') $('btnAddTarget').click(); });
+$('btnResetTargets').onclick=()=>{ targets=[111,222,333,444,555,666,777,888,999]; save('targets',targets); renderTargetChips(); };
+$('btnFindLinks').onclick=findLinks;
+
 /* ===================== TABS ===================== */
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tabpane').forEach(x=>x.classList.remove('active'));
   t.classList.add('active'); $('tab-'+t.dataset.tab).classList.add('active');
+  if(t.dataset.tab==='numbers') findLinks();
 });
 
 /* ===================== INIT ===================== */
@@ -522,7 +617,7 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   collection=collection.filter(e=>{const n=norm(e.text); if(seen.has(n))return false; seen.add(n); return true;});
   if(collection.length!==before) save('collection',collection);
 })();
-buildPrimoEditor(); renderCollection(); renderMatches(); renderResults();
+buildPrimoEditor(); renderTargetChips(); populateNumSystem(); renderCollection(); renderMatches(); renderResults();
 </script>
 </body>
 </html>
