@@ -94,17 +94,15 @@
     <div class="grid">
       <div class="card">
         <h2>Saisie</h2>
-        <textarea id="input" placeholder="Tapez un mot ou une phrase…&#10;Français/latin, hébreu (אמת) ou grec (λογος)"></textarea>
+        <textarea id="input" placeholder="Tapez un mot ou une phrase en français…"></textarea>
         <div class="row">
           <span class="scriptbadge" id="scriptBadge">—</span>
           <label class="pill"><input type="checkbox" id="optAccents" checked> ignorer accents (é→e, ç→c)</label>
           <button class="primary" id="btnSave">＋ Enregistrer dans la collection</button>
         </div>
         <div class="legend">
-          <span><span class="tag t-lat"></span>Latin/Français</span>
+          <span><span class="tag t-lat"></span>Ordinal &amp; Pythagore</span>
           <span><span class="tag t-primo"></span>Primosophie</span>
-          <span><span class="tag t-heb"></span>Hébreu</span>
-          <span><span class="tag t-grk"></span>Grec</span>
         </div>
       </div>
       <div class="card">
@@ -134,10 +132,8 @@
         <span class="count" id="collCount"></span>
       </div>
       <div class="legend" style="margin-bottom:10px">
-        <span><span class="tag t-lat"></span>Latin (ordinal, Pythagore)</span>
+        <span><span class="tag t-lat"></span>Ordinal &amp; Pythagore</span>
         <span><span class="tag t-primo"></span>Primosophie</span>
-        <span><span class="tag t-heb"></span>Hébreu</span>
-        <span><span class="tag t-grk"></span>Grec</span>
         <span><span style="display:inline-block;width:14px;height:14px;background:var(--hit);border:1px solid var(--hitline);border-radius:4px;vertical-align:middle;margin-right:5px"></span>case dorée = croisement (même valeur ailleurs)</span>
       </div>
       <div id="collTableWrap"></div>
@@ -163,9 +159,13 @@
       <div class="row"><button id="btnPrimoReset">↺ Réinitialiser (valeurs par défaut)</button></div>
     </div>
     <div class="card">
-      <h2>Méthodes hébraïques actives</h2>
-      <div class="row" id="hebToggles" style="margin-top:0"></div>
-      <p class="muted" style="font-size:13px">Décochez pour alléger l'affichage. Le calcul reste disponible pour les croisements.</p>
+      <h2>Comment lire les 3 systèmes</h2>
+      <table>
+        <tr><td><span class="tag t-lat"></span><b>Ordinal</b></td><td class="muted">Position de la lettre dans l'alphabet : A=1, B=2 … Z=26. On additionne. <span style="color:var(--txt)">Grande amplitude → croisements rares et signifiants.</span></td></tr>
+        <tr><td><span class="tag t-lat"></span><b>Pythagore</b></td><td class="muted">Chaque lettre est ramenée à un chiffre 1–9 (A=1…I=9, J=1…R=9, S=1…Z=8) puis on additionne. Amplitude moyenne.</td></tr>
+        <tr><td><span class="tag t-primo"></span><b>Primosophie</b></td><td class="muted">Chaque lettre = un nombre premier (A=1, B=2, C=3, D=5…). On additionne. Très grande amplitude → les croisements sont les plus marquants.</td></tr>
+      </table>
+      <p class="muted" style="font-size:13px;margin-top:12px">Hébreu et grec ont été retirés (ils ne s'appliquent qu'à du texte écrit dans ces alphabets). Dites-le-moi pour les réactiver.</p>
     </div>
   </div>
 
@@ -173,13 +173,12 @@
   <div class="tabpane" id="tab-about">
     <div class="card">
       <h2>Méthode &amp; honnêteté</h2>
-      <p>Cet atelier calcule la valeur numérique d'un texte selon plusieurs traditions, accumule vos entrées localement (dans le navigateur) et repère automatiquement les <b>croisements</b> : entrées de même valeur.</p>
+      <p>Cet atelier calcule la valeur numérique d'un mot français selon <b>3 systèmes</b> (Ordinal, Pythagore, Primosophie), accumule vos entrées localement (dans le navigateur) et repère automatiquement les <b>croisements</b> : entrées de même valeur.</p>
       <ul class="muted">
-        <li><b>Hébreu &amp; grec</b> : conventions millénaires, fiabilité élevée.</li>
-        <li><b>Latin ordinal / réduction pythagoricienne</b> : standards.</li>
-        <li><b>Primosophie</b> (Vermard / Laveau) : table déduite, <b>à valider sur le livre</b>.</li>
+        <li><b>Ordinal</b> (A=1…Z=26) et <b>Pythagore</b> (lettres réduites 1–9 puis somme) : standards.</li>
+        <li><b>Primosophie</b> (Vermard / Laveau) : table déduite (A=1 puis nombres premiers), <b>à valider sur le livre</b>.</li>
       </ul>
-      <p class="muted" style="font-size:13px">⚠️ Plus on multiplie méthodes et langues, plus deux mots quelconques finissent par « se croiser » : le biais de confirmation est inévitable. À utiliser comme exploration symbolique, pas comme preuve. Détails dans <code>RAPPORT-RECHERCHE.md</code>.</p>
+      <p class="muted" style="font-size:13px">⚠️ Un croisement n'est intéressant que sur les systèmes à <b>grande amplitude</b> (Primosophie, Ordinal) : deux grands nombres égaux, c'est rare. Sur les petits intervalles, tout se croise (biais de confirmation). À utiliser comme exploration symbolique, pas comme preuve. Détails dans <code>RAPPORT-RECHERCHE.md</code>.</p>
     </div>
   </div>
 </div>
@@ -269,10 +268,10 @@ function compute(text, ignoreAccents){
 }
 
 const SYS_META = {
-  lat_ord:{label:'Latin ordinal (A=1…Z=26)',cls:'t-lat',grp:'lat'},
-  lat_pyth:{label:'Réduction pythagoricienne',cls:'t-lat',grp:'lat'},
+  lat_ord:{label:'Ordinal (A=1 … Z=26)',cls:'t-lat',grp:'lat'},
+  lat_pyth:{label:'Pythagore (chaque lettre réduite 1–9, puis somme)',cls:'t-lat',grp:'lat'},
   lat_pyth_red:{label:'Pythagore (réduit 1 chiffre)',cls:'t-lat',grp:'lat'},
-  primo:{label:'Primosophie',cls:'t-primo',grp:'primo'},
+  primo:{label:'Primosophie (nombres premiers)',cls:'t-primo',grp:'primo'},
   heb_std:{label:'Hébreu — Mispar Hechrachi (std)',cls:'t-heb',grp:'heb'},
   heb_gadol:{label:'Hébreu — Mispar Gadol',cls:'t-heb',grp:'heb'},
   heb_ordinal:{label:'Hébreu — Mispar Siduri (ordinal)',cls:'t-heb',grp:'heb'},
@@ -284,8 +283,10 @@ const SYS_META = {
 };
 const HEB_SYS = ['heb_std','heb_gadol','heb_ordinal','heb_katan','heb_katanm','heb_atbash'];
 // ordre et titres lisibles des colonnes du tableau collection
-const COL_ORDER = ['lat_ord','lat_pyth','lat_pyth_red','primo','heb_std','heb_gadol','heb_ordinal','heb_katan','heb_katanm','heb_atbash','grk'];
-const COL_HEAD = {lat_ord:'Ordinal',lat_pyth:'Pythagore',lat_pyth_red:'Pyth. réduit',primo:'Primosophie',heb_std:'Hébreu std',heb_gadol:'Hébreu gadol',heb_ordinal:'Hébreu ordinal',heb_katan:'Hébreu katan',heb_katanm:'Hébreu réduit',heb_atbash:'AtBash',grk:'Grec'};
+// Systèmes ACTIFS (français uniquement) : affichés ET pris en compte pour les croisements
+const SYSTEMS = ['lat_ord','lat_pyth','primo'];
+const COL_ORDER = SYSTEMS;
+const COL_HEAD = {lat_ord:'Ordinal',lat_pyth:'Pythagore',primo:'Primosophie'};
 
 // systèmes à afficher selon les réglages
 function visibleSystems(values){
@@ -306,8 +307,8 @@ function renderResults(){
   if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; renderLiveMatches(null); return; }
   const {script,values}=compute(txt,ignore);
   scriptBadge.textContent = {heb:'Hébreu détecté',grk:'Grec détecté',lat:'Latin / Français',none:'—'}[script];
-  const keys=Object.keys(values).filter(k=>k!=='heb_kolel');
-  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Aucune lettre reconnue.</td></tr>'; renderLiveMatches(null); return; }
+  const keys=SYSTEMS.filter(k=>values[k]!==undefined);
+  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Tapez un mot en lettres latines (français).</td></tr>'; renderLiveMatches(null); return; }
   resultBody.innerHTML = keys.map(k=>{
     const m=SYS_META[k];
     return `<tr><td><span class="tag ${m.cls}"></span>${m.label}</td><td class="val">${values[k]}</td></tr>`;
@@ -321,9 +322,8 @@ function renderLiveMatches(values, txt){
   if(!values || !Object.keys(values).length){ card.style.display='none'; return; }
   card.style.display='block';
   const rows=[];
-  Object.keys(values).forEach(k=>{
-    if(k==='heb_kolel') return;
-    const v=values[k];
+  SYSTEMS.forEach(k=>{
+    const v=values[k]; if(v===undefined) return;
     const matches=collection.filter(e=>e.values[k]===v && e.text.toLowerCase()!==(txt||'').toLowerCase());
     if(matches.length){
       const words=matches.map(e=>`<span class="mword">${escapeHtml(e.text)}</span>`).join('');
@@ -354,21 +354,20 @@ const collWrap=$('collTableWrap'), search=$('search'), filterSystem=$('filterSys
 function populateSystemFilter(){
   const cur=filterSystem.value;
   filterSystem.innerHTML='<option value="">Tous les systèmes</option>'+
-    Object.keys(SYS_META).filter(k=>k!=='heb_kolel').map(k=>`<option value="${k}">${SYS_META[k].label}</option>`).join('');
+    SYSTEMS.map(k=>`<option value="${k}">${SYS_META[k].label}</option>`).join('');
   filterSystem.value=cur;
 }
 
 // index des valeurs -> pour surligner les croisements
 function buildHitIndex(){
-  const same={}, cross={}; // same: "sys|val" -> count ; cross: val -> Set(text)
+  const same={}; // "sys|val" -> nombre d'entrées (sur les systèmes actifs uniquement)
   collection.forEach(e=>{
-    Object.entries(e.values).forEach(([k,v])=>{
-      if(k==='heb_kolel'||k==='lat_pyth_red'||k==='heb_katanm') {/* inclure quand même */ }
+    SYSTEMS.forEach(k=>{
+      const v=e.values[k]; if(v===undefined) return;
       same[k+'|'+v]=(same[k+'|'+v]||0)+1;
-      (cross[v]=cross[v]||new Set()).add(e.id);
     });
   });
-  return {same,cross};
+  return {same};
 }
 
 function renderCollection(){
@@ -413,7 +412,8 @@ function renderMatches(){
   const groups=[];
   if(mode==='same'){
     const map={}; // "sys|val" -> [entries]
-    collection.forEach(e=>Object.entries(e.values).forEach(([k,v])=>{
+    collection.forEach(e=>SYSTEMS.forEach(k=>{
+      const v=e.values[k]; if(v===undefined) return;
       const key=k+'|'+v; (map[key]=map[key]||[]).push({e,sys:k,v});
     }));
     Object.values(map).forEach(arr=>{
@@ -423,7 +423,8 @@ function renderMatches(){
     groups.sort((a,b)=>b.items.length-a.items.length || a.v-b.v);
   } else {
     const map={}; // val -> [{e,sys}]
-    collection.forEach(e=>Object.entries(e.values).forEach(([k,v])=>{
+    collection.forEach(e=>SYSTEMS.forEach(k=>{
+      const v=e.values[k]; if(v===undefined) return;
       (map[v]=map[v]||[]).push({e,sys:k,v});
     }));
     Object.entries(map).forEach(([v,arr])=>{
@@ -505,7 +506,7 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
 });
 
 /* ===================== INIT ===================== */
-buildPrimoEditor(); buildHebToggles(); renderCollection(); renderMatches(); renderResults();
+buildPrimoEditor(); renderCollection(); renderMatches(); renderResults();
 </script>
 </body>
 </html>
