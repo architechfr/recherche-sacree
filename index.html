@@ -34,6 +34,9 @@
   th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
   th{color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
   td.val{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+  td.cellhit{background:var(--hit);color:var(--accent);font-weight:800;border-radius:5px}
+  .collection th .tag{display:inline-block;margin-right:5px}
+  .collection td.word{min-width:130px}
   .tag{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:middle}
   .t-heb{background:var(--heb)} .t-grk{background:var(--grk)} .t-lat{background:var(--lat)} .t-primo{background:var(--primo)}
   .muted{color:var(--muted)}
@@ -111,6 +114,11 @@
         </tbody></table>
       </div>
     </div>
+    <div class="card" id="liveCard" style="margin-top:18px;display:none">
+      <h2>⟡ Combinaisons potentielles dans votre collection</h2>
+      <p class="muted" style="font-size:13px;margin-top:-4px">Mots déjà enregistrés ayant la <b>même valeur</b> que votre saisie (croisement direct).</p>
+      <div id="liveMatches"></div>
+    </div>
   </div>
 
   <!-- ============ COLLECTION ============ -->
@@ -125,9 +133,14 @@
         <input type="file" id="fileImport" accept="application/json" style="display:none">
         <span class="count" id="collCount"></span>
       </div>
-      <table class="collection"><thead><tr><th>Entrée</th><th>Valeurs</th><th></th></tr></thead>
-        <tbody id="collBody"></tbody>
-      </table>
+      <div class="legend" style="margin-bottom:10px">
+        <span><span class="tag t-lat"></span>Latin (ordinal, Pythagore)</span>
+        <span><span class="tag t-primo"></span>Primosophie</span>
+        <span><span class="tag t-heb"></span>Hébreu</span>
+        <span><span class="tag t-grk"></span>Grec</span>
+        <span><span style="display:inline-block;width:14px;height:14px;background:var(--hit);border:1px solid var(--hitline);border-radius:4px;vertical-align:middle;margin-right:5px"></span>case dorée = croisement (même valeur ailleurs)</span>
+      </div>
+      <div id="collTableWrap"></div>
     </div>
 
     <div class="card">
@@ -270,6 +283,9 @@ const SYS_META = {
   grk:{label:'Grec — Isopséphie',cls:'t-grk',grp:'grk'}
 };
 const HEB_SYS = ['heb_std','heb_gadol','heb_ordinal','heb_katan','heb_katanm','heb_atbash'];
+// ordre et titres lisibles des colonnes du tableau collection
+const COL_ORDER = ['lat_ord','lat_pyth','lat_pyth_red','primo','heb_std','heb_gadol','heb_ordinal','heb_katan','heb_katanm','heb_atbash','grk'];
+const COL_HEAD = {lat_ord:'Ordinal',lat_pyth:'Pythagore',lat_pyth_red:'Pyth. réduit',primo:'Primosophie',heb_std:'Hébreu std',heb_gadol:'Hébreu gadol',heb_ordinal:'Hébreu ordinal',heb_katan:'Hébreu katan',heb_katanm:'Hébreu réduit',heb_atbash:'AtBash',grk:'Grec'};
 
 // systèmes à afficher selon les réglages
 function visibleSystems(values){
@@ -287,15 +303,35 @@ const input=$('input'), resultBody=$('resultBody'), scriptBadge=$('scriptBadge')
 function renderResults(){
   const txt=input.value.trim();
   const ignore=$('optAccents').checked;
-  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; return; }
+  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; renderLiveMatches(null); return; }
   const {script,values}=compute(txt,ignore);
   scriptBadge.textContent = {heb:'Hébreu détecté',grk:'Grec détecté',lat:'Latin / Français',none:'—'}[script];
   const keys=Object.keys(values).filter(k=>k!=='heb_kolel');
-  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Aucune lettre reconnue.</td></tr>'; return; }
+  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Aucune lettre reconnue.</td></tr>'; renderLiveMatches(null); return; }
   resultBody.innerHTML = keys.map(k=>{
     const m=SYS_META[k];
     return `<tr><td><span class="tag ${m.cls}"></span>${m.label}</td><td class="val">${values[k]}</td></tr>`;
   }).join('');
+  renderLiveMatches(values, txt);
+}
+
+// propose en direct les mots déjà enregistrés de même valeur (croisement)
+function renderLiveMatches(values, txt){
+  const card=$('liveCard'), box=$('liveMatches');
+  if(!values || !Object.keys(values).length){ card.style.display='none'; return; }
+  card.style.display='block';
+  const rows=[];
+  Object.keys(values).forEach(k=>{
+    if(k==='heb_kolel') return;
+    const v=values[k];
+    const matches=collection.filter(e=>e.values[k]===v && e.text.toLowerCase()!==(txt||'').toLowerCase());
+    if(matches.length){
+      const words=matches.map(e=>`<span class="mword">${escapeHtml(e.text)}</span>`).join('');
+      rows.push(`<div class="matchgroup"><div class="head"><span class="v">${v}</span><span class="muted">${SYS_META[k].label} · ${matches.length} trouvé(s)</span></div><div class="words">${words}</div></div>`);
+    }
+  });
+  box.innerHTML = rows.length ? rows.join('')
+    : '<div class="empty">Aucun mot de même valeur dans votre collection. Enregistrez celui-ci pour enrichir la base.</div>';
 }
 input.addEventListener('input',renderResults);
 $('optAccents').addEventListener('change',renderResults);
@@ -313,7 +349,7 @@ $('btnSave').addEventListener('click',()=>{
 function flash(btn,msg){const o=btn.textContent;btn.textContent=msg;setTimeout(()=>btn.textContent=o,1100);}
 
 /* ===================== UI : COLLECTION ===================== */
-const collBody=$('collBody'), search=$('search'), filterSystem=$('filterSystem');
+const collWrap=$('collTableWrap'), search=$('search'), filterSystem=$('filterSystem');
 
 function populateSystemFilter(){
   const cur=filterSystem.value;
@@ -344,18 +380,22 @@ function renderCollection(){
   if(q) list=list.filter(e=>e.text.toLowerCase().includes(q));
   if(fsys) list=list.filter(e=>e.values[fsys]!==undefined);
   $('collCount').textContent = `${collection.length} entrée${collection.length>1?'s':''}`;
-  if(!list.length){ collBody.innerHTML='<tr><td colspan="3" class="empty">Aucune entrée.</td></tr>'; return; }
-  collBody.innerHTML=list.map(e=>{
-    const chips=visibleSystems(e.values).map(k=>{
-      const m=SYS_META[k]; const v=e.values[k];
-      const hit = same[k+'|'+v]>1;
-      return `<span class="chip ${hit?'hit':''}" title="${m.label}"><span class="tag ${m.cls}" style="width:7px;height:7px"></span>${shortSys(k)} <b>${v}</b></span>`;
+  if(!list.length){ collWrap.innerHTML='<div class="empty">Aucune entrée.</div>'; return; }
+  // colonnes réellement présentes (et méthodes hébraïques actives)
+  let cols=COL_ORDER.filter(k=> (HEB_SYS.includes(k)? hebActive[k]:true) && collection.some(e=>e.values[k]!==undefined));
+  if(fsys) cols=cols.filter(k=>k===fsys);
+  const thead=`<tr><th>Entrée</th>${cols.map(k=>`<th title="${SYS_META[k].label}"><span class="tag ${SYS_META[k].cls}"></span>${COL_HEAD[k]}</th>`).join('')}<th></th></tr>`;
+  const rows=list.map(e=>{
+    const tds=cols.map(k=>{
+      const v=e.values[k];
+      if(v===undefined) return '<td class="val" style="color:var(--muted)">·</td>';
+      const hit=same[k+'|'+v]>1;
+      return `<td class="val${hit?' cellhit':''}"${hit?' title="Croisement : une autre entrée a la même valeur"':''}>${v}</td>`;
     }).join('');
-    return `<tr><td class="word">${escapeHtml(e.text)}<div class="muted" style="font-size:11px">${{heb:'hébreu',grk:'grec',lat:'latin'}[e.script]||''}</div></td>
-      <td><div class="vals">${chips}</div></td>
-      <td><button class="del" data-id="${e.id}" title="Supprimer">✕</button></td></tr>`;
+    return `<tr><td class="word">${escapeHtml(e.text)} <span class="muted" style="font-size:11px">${{heb:'héb',grk:'grec',lat:''}[e.script]||''}</span></td>${tds}<td><button class="del" data-id="${e.id}" title="Supprimer">✕</button></td></tr>`;
   }).join('');
-  collBody.querySelectorAll('.del').forEach(b=>b.onclick=()=>{
+  collWrap.innerHTML=`<table class="collection"><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
+  collWrap.querySelectorAll('.del').forEach(b=>b.onclick=()=>{
     collection=collection.filter(x=>x.id!==b.dataset.id); save('collection',collection);
     renderCollection(); renderMatches();
   });
