@@ -85,6 +85,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="calc">Calculateur</button>
     <button class="tab" data-tab="collection">Collection &amp; croisements</button>
+    <button class="tab" data-tab="bynumber">🔢 Par nombre</button>
     <button class="tab" data-tab="numbers">Nombres remarquables</button>
     <button class="tab" data-tab="settings">Tables &amp; réglages</button>
     <button class="tab" data-tab="about">À propos</button>
@@ -161,6 +162,22 @@
         <span class="muted" style="font-size:12px">Groupes d'entrées ayant une valeur identique.</span>
       </div>
       <div id="matches"></div>
+    </div>
+  </div>
+
+  <!-- ============ PAR NOMBRE ============ -->
+  <div class="tabpane" id="tab-bynumber">
+    <div class="card" style="margin-bottom:18px">
+      <h2>Index des nombres</h2>
+      <div class="toolbar">
+        <input type="text" id="numJump" placeholder="aller à un nombre… (ex. 211)" style="max-width:220px">
+        <label class="pill"><input type="checkbox" id="onlyShared" checked> seulement les nombres partagés (≥2 mots)</label>
+        <span class="count" id="numIndexCount"></span>
+      </div>
+      <div id="numberIndex" class="vals" style="gap:6px"></div>
+    </div>
+    <div class="card">
+      <div id="numberDetail"><div class="empty">Choisissez un nombre dans l'index ci-dessus, ou tapez-en un.</div></div>
     </div>
   </div>
 
@@ -692,12 +709,87 @@ $('newTarget').addEventListener('keydown',e=>{ if(e.key==='Enter') $('btnAddTarg
 $('btnResetTargets').onclick=()=>{ targets=[111,222,333,444,555,666,777,888,999]; save('targets',targets); renderTargetChips(); };
 $('btnFindLinks').onclick=findLinks;
 
+/* ===================== INTERFACE PAR NOMBRE ===================== */
+let selectedNumber=null;
+function buildNumberIndex(){
+  const idx={}; // valeur -> { système -> Set(mots) }
+  collection.forEach(e=>SYSTEMS.forEach(k=>{
+    const v=e.values[k]; if(v==null) return;
+    (idx[v]=idx[v]||{}); (idx[v][k]=idx[v][k]||new Set()).add(e.text);
+  }));
+  return idx;
+}
+function wordsCount(entry){ const s=new Set(); Object.values(entry).forEach(set=>set.forEach(w=>s.add(norm(w)))); return s.size; }
+// additions de 2 à maxK mots dont la somme = T (par système)
+function combosForTarget(T,maxK){
+  const res={};
+  SYSTEMS.forEach(S=>{
+    const items=collection.filter(e=>e.values[S]!==undefined).map(e=>({t:e.text,v:e.values[S]}));
+    const n=items.length, idx=[];
+    (function dfs(start,sum,depth){
+      if(depth>=2 && sum===T){ (res[S]=res[S]||[]).push(idx.map(i=>items[i].t)); }
+      if(depth===maxK) return;
+      for(let i=start;i<n;i++){ const ns=sum+items[i].v; if(ns>T) continue; idx.push(i); dfs(i+1,ns,depth+1); idx.pop(); }
+    })(0,0,0);
+  });
+  return res;
+}
+function renderNumberIndex(){
+  const idx=buildNumberIndex();
+  const onlyShared=$('onlyShared').checked;
+  const targetSet=new Set(targets);
+  let vals=Object.keys(idx).map(Number);
+  if(onlyShared) vals=vals.filter(v=>wordsCount(idx[v])>=2 || targetSet.has(v));
+  vals.sort((a,b)=>a-b);
+  $('numIndexCount').textContent=`${vals.length} nombre(s)`;
+  const box=$('numberIndex');
+  box.innerHTML = vals.length
+    ? vals.map(v=>{ const c=wordsCount(idx[v]); const star=targetSet.has(v); return `<span class="chip numchip${c>=2?' hit':''}" data-v="${v}" style="cursor:pointer;font-size:13px">${star?'★ ':''}${v} <b>×${c}</b></span>`; }).join('')
+    : '<div class="empty">Aucun nombre à afficher (ajoutez des entrées).</div>';
+  box.querySelectorAll('.numchip').forEach(ch=>ch.onclick=()=>{ selectedNumber=+ch.dataset.v; renderNumberDetail(); });
+  renderNumberDetail();
+}
+function renderNumberDetail(){
+  const box=$('numberDetail');
+  if(selectedNumber==null){ box.innerHTML='<div class="empty">Choisissez un nombre dans l\'index ci-dessus, ou tapez-en un.</div>'; return; }
+  const idx=buildNumberIndex();
+  const entry=idx[selectedNumber];
+  const targetSet=new Set(targets);
+  const rk = targetSet.has(selectedNumber)? ' <span class="muted">★ nombre remarquable</span>' : '';
+  let blocks='';
+  if(entry){
+    blocks = Object.keys(entry).map(k=>{
+      const words=[...entry[k]];
+      return `<div style="margin:6px 0 10px"><div class="muted" style="font-size:12px;margin-bottom:3px"><span class="tag ${SYS_META[k].cls}"></span>${SYS_META[k].label} · ${words.length}</div><div class="words">${words.map(w=>`<span class="mword">${escapeHtml(w)}</span>`).join('')}</div></div>`;
+    }).join('');
+  } else {
+    blocks = '<div class="muted" style="margin:6px 0">Aucun mot seul n\'atteint ce nombre.</div>';
+  }
+  // additions
+  const combos=combosForTarget(selectedNumber,3);
+  let addBlocks='';
+  if(Object.keys(combos).length){
+    const CAP=30;
+    addBlocks = '<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px"><div class="muted" style="font-size:13px;margin-bottom:6px"><b>Additions de mots = '+selectedNumber+'</b></div>'+
+      Object.keys(combos).map(k=>{
+        const list=combos[k].sort((a,b)=>a.length-b.length);
+        const lines=list.slice(0,CAP).map(c=>`<div style="margin:2px 0">${c.map(escapeHtml).join(' <span class="muted">+</span> ')}</div>`).join('');
+        const extra=list.length>CAP?`<div class="muted" style="font-size:12px">… +${list.length-CAP} autres</div>`:'';
+        return `<div style="margin:6px 0"><div class="muted" style="font-size:12px"><span class="tag ${SYS_META[k].cls}"></span>${SYS_META[k].label} · ${list.length}</div>${lines}${extra}</div>`;
+      }).join('')+'</div>';
+  }
+  box.innerHTML = `<div class="matchgroup"><div class="head"><span class="v" style="font-size:28px">${selectedNumber}</span>${rk}</div>${blocks}${addBlocks}</div>`;
+}
+$('numJump').addEventListener('input',()=>{ const v=parseInt($('numJump').value,10); selectedNumber = v>0? v : null; renderNumberDetail(); });
+$('onlyShared').addEventListener('change',renderNumberIndex);
+
 /* ===================== TABS ===================== */
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tabpane').forEach(x=>x.classList.remove('active'));
   t.classList.add('active'); $('tab-'+t.dataset.tab).classList.add('active');
   if(t.dataset.tab==='numbers') findLinks();
+  if(t.dataset.tab==='bynumber') renderNumberIndex();
 });
 
 /* ===================== INIT ===================== */
