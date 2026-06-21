@@ -929,14 +929,12 @@ function renderCorpusTable(){
   const hits=corpus.filter(v=>isRemark(v.values[S],set));
   $('corpusHitInfo').textContent = `${hits.length} verset(s) remarquable(s) sur ${corpus.length} en ${COL_HEAD[S]}`;
   const CAP=300; const list=corpus.slice(0,CAP);
-  const rows=list.map((v,i)=>{
+  const rows=list.map(v=>{
     const val=v.values[S]; const rk=isRemark(val,set);
-    const long=v.text.length>90; const txt=long? v.text.slice(0,90)+'…':v.text;
-    return `<tr><td class="muted" style="white-space:nowrap;vertical-align:top">${escapeHtml(v.ref)}</td><td class="vtext" data-i="${i}" style="${long?'cursor:pointer':''}" title="${long?'cliquer pour lire le verset entier':''}">${escapeHtml(txt)}</td><td class="val${rk?' cellhit':''}" style="vertical-align:top">${val}</td></tr>`;
+    return `<tr><td class="muted" style="white-space:nowrap;vertical-align:top">${escapeHtml(v.ref)}</td><td style="vertical-align:top;line-height:1.55">${escapeHtml(v.text)}</td><td class="val${rk?' cellhit':''}" style="vertical-align:top">${val}</td></tr>`;
   }).join('');
   const extra=corpus.length>CAP?`<div class="muted" style="font-size:12px;margin-top:6px">… ${corpus.length-CAP} versets non affichés (calculés quand même)</div>`:'';
-  box.innerHTML=`<table class="collection"><thead><tr><th>Réf.</th><th>Verset</th><th>${COL_HEAD[S]}</th></tr></thead><tbody>${rows}</tbody></table>${extra}`;
-  box.querySelectorAll('.vtext').forEach(td=>{ const i=+td.dataset.i; const full=list[i].text; if(full.length>90){ td.onclick=()=>{ if(td.dataset.exp==='1'){ td.textContent=full.slice(0,90)+'…'; td.dataset.exp='0'; } else { td.textContent=full; td.dataset.exp='1'; } }; } });
+  box.innerHTML=`<table class="collection"><thead><tr><th>Réf.</th><th>Verset</th><th style="text-align:right">${COL_HEAD[S]}</th></tr></thead><tbody>${rows}</tbody></table>${extra}`;
 }
 function renderCorpusWords(){
   const box=$('corpusWords');
