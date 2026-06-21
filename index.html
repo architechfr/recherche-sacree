@@ -523,6 +523,7 @@ function renderVariants(txt){
 
 // miroir : mot écrit à l'envers (même valeur ; intéressant si le miroir est un mot)
 function revLetters(s){ return [...s].reverse().join(''); }
+function mirrorNum(n){ const r=(''+n).split('').reverse().join('').replace(/^0+/,''); return r? parseInt(r,10):0; }
 function renderMirror(txt){
   const card=$('mirrorCard'), box=$('mirrorBox');
   const base=(txt||'').trim();
@@ -537,8 +538,17 @@ function renderMirror(txt){
   // miroir de chaque mot si plusieurs
   if(tokens.length>1) tokens.forEach(tk=>{ const c=(ignore?stripAccents(tk):tk).toLowerCase().replace(/[^a-zà-ÿ]/g,''); if(c.length>=2) rows.push({mot:tk, miroir:revLetters(c)}); });
   card.style.display='block';
-  box.innerHTML = `<p class="muted" style="font-size:13px;margin-top:-4px">Un mot et son miroir ont <b>toujours la même valeur</b> (Ordinal, Primosophie, KATY) — l'intérêt est quand le miroir est lui aussi un mot porteur de sens (ex. amor ⇄ roma).</p>`+
+  const wordHtml = `<div class="muted" style="font-size:12px;margin-bottom:4px">Mot à l'envers (même valeur ; intéressant si c'est aussi un mot, ex. amor ⇄ roma) :</div>`+
     rows.map(r=>{ const m=inColl(norm(r.miroir)); return `<div style="margin:3px 0"><b>${escapeHtml(r.mot)}</b> → <b style="color:var(--katy)">${escapeHtml(r.miroir)}</b>${m?` <span class="chip hit" style="font-size:12px">↔ dans votre collection : ${escapeHtml(m.text)}</span>`:''}</div>`; }).join('');
+  const v=compute(base,ignore).values;
+  const numHtml = SYSTEMS.filter(k=>v[k]!=null).map(k=>{
+    const val=v[k], mir=mirrorNum(val);
+    if(mir===val) return `<div style="margin:3px 0"><span class="tag ${SYS_META[k].cls}"></span>${COL_HEAD[k]} <b>${val}</b> <span class="muted">— palindrome</span></div>`;
+    const words=distinctMatches(k,mir,norm(base));
+    const w=words.length?` → <span class="chip hit" style="font-size:12px">${escapeHtml(words.join(', '))}</span>`:' <span class="muted">(non répertorié)</span>';
+    return `<div style="margin:3px 0"><span class="tag ${SYS_META[k].cls}"></span>${COL_HEAD[k]} <b>${val}</b> → nombre miroir <b style="color:var(--accent)">${mir}</b>${w}</div>`;
+  }).join('');
+  box.innerHTML = wordHtml + `<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="muted" style="font-size:12px;margin-bottom:4px">Nombres miroir (valeur aux chiffres inversés) :</div>${numHtml}</div>`;
 }
 
 // propose en direct les mots déjà enregistrés de même valeur (croisement)
@@ -683,7 +693,7 @@ document.querySelectorAll('input[name=xmode]').forEach(r=>r.addEventListener('ch
 
 /* ===================== EXPORT / IMPORT ===================== */
 $('btnExport').onclick=()=>{
-  const data={version:1,exported:new Date().toISOString(),primo,collection};
+  const data={version:2,exported:new Date().toISOString(),primo,collection,corpus,targets};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download='gematrie-collection.json'; a.click();
@@ -701,6 +711,12 @@ $('fileImport').onchange=ev=>{
       save('collection',collection);
     }
     if(d.primo){ primo={...primo,...d.primo}; save('primoTable',primo); recomputeAll(); buildPrimoEditor(); }
+    if(Array.isArray(d.corpus)){
+      const ex=new Set(corpus.map(v=>v.ref+'|'+norm(v.text)));
+      d.corpus.forEach(v=>{ const k=v.ref+'|'+norm(v.text); if(!ex.has(k)){ ex.add(k); corpus.push(v); } });
+      save('corpus',corpus); renderCorpusTable(); renderCorpusWords();
+    }
+    if(Array.isArray(d.targets)){ d.targets.forEach(t=>{ if(!targets.includes(t)) targets.push(t); }); save('targets',targets); renderTargetChips(); }
     renderCollection(); renderMatches();
     alert('Import réussi.');
   }catch(e){alert('Fichier invalide.');}};
@@ -867,7 +883,10 @@ function renderNumberDetail(){
         return `<div style="margin:6px 0"><div class="muted" style="font-size:12px"><span class="tag ${SYS_META[k].cls}"></span>${SYS_META[k].label} · ${list.length}</div>${lines}</div>`;
       }).join('')+'</div>';
   }
-  box.innerHTML = `<div class="matchgroup"><div class="head"><span class="v" style="font-size:28px">${selectedNumber}</span>${rk}</div>${blocks}${addBlocks}</div>`;
+  const mir=mirrorNum(selectedNumber);
+  const mirLine = mir!==selectedNumber? `<div class="muted" style="font-size:13px;margin:6px 0">↔ Nombre miroir : <span id="goMirror" style="cursor:pointer;color:var(--accent);font-weight:600">${mir}</span></div>`:'';
+  box.innerHTML = `<div class="matchgroup"><div class="head"><span class="v" style="font-size:28px">${selectedNumber}</span>${rk}</div>${mirLine}${blocks}${addBlocks}</div>`;
+  const gm=document.getElementById('goMirror'); if(gm) gm.onclick=()=>{ selectedNumber=mir; renderNumberDetail(); };
 }
 $('numJump').addEventListener('input',()=>{ const v=parseInt($('numJump').value,10); selectedNumber = v>0? v : null; renderNumberDetail(); });
 $('onlyShared').addEventListener('change',renderNumberIndex);
@@ -910,13 +929,14 @@ function renderCorpusTable(){
   const hits=corpus.filter(v=>isRemark(v.values[S],set));
   $('corpusHitInfo').textContent = `${hits.length} verset(s) remarquable(s) sur ${corpus.length} en ${COL_HEAD[S]}`;
   const CAP=300; const list=corpus.slice(0,CAP);
-  const rows=list.map(v=>{
+  const rows=list.map((v,i)=>{
     const val=v.values[S]; const rk=isRemark(val,set);
-    const txt=v.text.length>90? v.text.slice(0,90)+'…':v.text;
-    return `<tr><td class="muted" style="white-space:nowrap">${escapeHtml(v.ref)}</td><td>${escapeHtml(txt)}</td><td class="val${rk?' cellhit':''}">${val}</td></tr>`;
+    const long=v.text.length>90; const txt=long? v.text.slice(0,90)+'…':v.text;
+    return `<tr><td class="muted" style="white-space:nowrap;vertical-align:top">${escapeHtml(v.ref)}</td><td class="vtext" data-i="${i}" style="${long?'cursor:pointer':''}" title="${long?'cliquer pour lire le verset entier':''}">${escapeHtml(txt)}</td><td class="val${rk?' cellhit':''}" style="vertical-align:top">${val}</td></tr>`;
   }).join('');
   const extra=corpus.length>CAP?`<div class="muted" style="font-size:12px;margin-top:6px">… ${corpus.length-CAP} versets non affichés (calculés quand même)</div>`:'';
   box.innerHTML=`<table class="collection"><thead><tr><th>Réf.</th><th>Verset</th><th>${COL_HEAD[S]}</th></tr></thead><tbody>${rows}</tbody></table>${extra}`;
+  box.querySelectorAll('.vtext').forEach(td=>{ const i=+td.dataset.i; const full=list[i].text; if(full.length>90){ td.onclick=()=>{ if(td.dataset.exp==='1'){ td.textContent=full.slice(0,90)+'…'; td.dataset.exp='0'; } else { td.textContent=full; td.dataset.exp='1'; } }; } });
 }
 function renderCorpusWords(){
   const box=$('corpusWords');
