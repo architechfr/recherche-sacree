@@ -131,8 +131,9 @@
       <div id="mirrorBox"></div>
     </div>
     <div class="card" id="aiCard" style="margin-top:18px">
-      <h2>🤖 Assistant IA (Gemini)</h2>
+      <h2>🤖 Assistant IA</h2>
       <div class="row" style="margin-top:0">
+        <button id="btnAiSpell">✓ Corriger l'orthographe</button>
         <button id="btnAiRelated">💡 Idées liées</button>
         <button id="btnAiInterpret">🔮 Interpréter</button>
         <span class="muted" id="aiStatus" style="font-size:12px"></span>
@@ -1042,6 +1043,19 @@ function addWordToCollection(t){
   collection.unshift({id:Date.now()+'-'+Math.round(performance.now()*1000),text:t,script:'lat',ignore:ign,values:compute(t,ign).values});
   save('collection',collection); renderCollection(); renderMatches(); return true;
 }
+$('btnAiSpell').onclick=async()=>{
+  const w=$('input').value.trim();
+  if(!w){ $('aiResult').innerHTML='<div class="empty">Tapez d\'abord un mot.</div>'; return; }
+  if(!hasAiKey()){ $('aiResult').innerHTML=aiNoKey(); return; }
+  $('aiStatus').textContent='vérification…'; $('aiResult').innerHTML='';
+  try{
+    let txt=await callAI(`Corrige uniquement les fautes d'orthographe et d'accent de ce texte français, sans le reformuler, sans rien ajouter ni retirer, sans ponctuation supplémentaire. Réponds UNIQUEMENT par le texte corrigé : « ${w} »`);
+    txt=txt.trim().replace(/^[«"']\s*/,'').replace(/\s*[»"'.]$/,'').trim();
+    if(norm(txt)===norm(w)) $('aiResult').innerHTML=`<div class="matchgroup">✓ Aucune faute détectée : <b>${escapeHtml(w)}</b></div>`;
+    else { $('aiResult').innerHTML=`<div class="matchgroup">Correction proposée : <b style="color:var(--accent)">${escapeHtml(txt)}</b> &nbsp;<button id="btnApplySpell">Appliquer</button></div>`; $('btnApplySpell').onclick=()=>{ $('input').value=txt; $('input').dispatchEvent(new Event('input')); $('aiResult').innerHTML='<div class="muted">✓ Appliqué.</div>'; }; }
+  }catch(e){ $('aiResult').innerHTML='<div class="warn">Erreur : '+escapeHtml(e.message)+'</div>'; }
+  $('aiStatus').textContent='';
+};
 $('btnAiRelated').onclick=async()=>{
   const w=$('input').value.trim();
   if(!w){ $('aiResult').innerHTML='<div class="empty">Tapez d\'abord un mot.</div>'; return; }
