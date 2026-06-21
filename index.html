@@ -8,7 +8,7 @@
   :root{
     --bg:#0f1117; --panel:#171a22; --panel2:#1e222c; --line:#2a2f3a;
     --txt:#e8eaf0; --muted:#9aa3b2; --accent:#c9a44a; --accent2:#6ea8fe;
-    --heb:#7ed3a0; --grk:#6ea8fe; --lat:#c9a44a; --primo:#e07a9b;
+    --heb:#7ed3a0; --grk:#6ea8fe; --lat:#c9a44a; --primo:#e07a9b; --katy:#a98bd8;
     --hit:#3a2f1a; --hitline:#c9a44a;
     --radius:10px;
   }
@@ -38,7 +38,7 @@
   .collection th .tag{display:inline-block;margin-right:5px}
   .collection td.word{min-width:130px}
   .tag{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:middle}
-  .t-heb{background:var(--heb)} .t-grk{background:var(--grk)} .t-lat{background:var(--lat)} .t-primo{background:var(--primo)}
+  .t-heb{background:var(--heb)} .t-grk{background:var(--grk)} .t-lat{background:var(--lat)} .t-primo{background:var(--primo)} .t-katy{background:var(--katy)}
   .muted{color:var(--muted)}
   .results td:first-child{color:var(--muted)}
   .scriptbadge{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
@@ -104,6 +104,7 @@
         <div class="legend">
           <span><span class="tag t-lat"></span>Ordinal &amp; Pythagore</span>
           <span><span class="tag t-primo"></span>Primosophie</span>
+          <span><span class="tag t-katy"></span>KATY</span>
         </div>
       </div>
       <div class="card">
@@ -112,6 +113,11 @@
           <tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>
         </tbody></table>
       </div>
+    </div>
+    <div class="card" id="katyCard" style="margin-top:18px;display:none">
+      <h2>🔮 Détail KATY — calcul ultra-profond</h2>
+      <p class="muted" style="font-size:13px;margin-top:-4px">Chaque lettre → sa valeur (A=1 … Z=26) → ce nombre écrit en toutes lettres → somme ordinale de ce mot.</p>
+      <div id="katyDetail"></div>
     </div>
     <div class="card" id="liveCard" style="margin-top:18px;display:none">
       <h2>⟡ Combinaisons potentielles dans votre collection</h2>
@@ -135,6 +141,7 @@
       <div class="legend" style="margin-bottom:10px">
         <span><span class="tag t-lat"></span>Ordinal &amp; Pythagore</span>
         <span><span class="tag t-primo"></span>Primosophie</span>
+        <span><span class="tag t-katy"></span>KATY</span>
         <span><span style="display:inline-block;width:14px;height:14px;background:var(--hit);border:1px solid var(--hitline);border-radius:4px;vertical-align:middle;margin-right:5px"></span>case dorée = croisement (même valeur ailleurs)</span>
       </div>
       <div id="collTableWrap"></div>
@@ -192,6 +199,7 @@
         <tr><td><span class="tag t-lat"></span><b>Ordinal</b></td><td class="muted">Position de la lettre dans l'alphabet : A=1, B=2 … Z=26. On additionne. <span style="color:var(--txt)">Grande amplitude → croisements rares et signifiants.</span></td></tr>
         <tr><td><span class="tag t-lat"></span><b>Pythagore</b></td><td class="muted">Chaque lettre est ramenée à un chiffre 1–9 (A=1…I=9, J=1…R=9, S=1…Z=8) puis on additionne. Amplitude moyenne.</td></tr>
         <tr><td><span class="tag t-primo"></span><b>Primosophie</b></td><td class="muted">Chaque lettre = un nombre premier (A=1, B=2, C=3, D=5…). On additionne. Très grande amplitude → les croisements sont les plus marquants.</td></tr>
+        <tr><td><span class="tag t-katy"></span><b>KATY</b></td><td class="muted">Système « deux étages » : chaque lettre → sa valeur (A=1…Z=26) → ce nombre écrit en toutes lettres (13 → « treize ») → somme ordinale de ce mot, puis on additionne. Très grande amplitude. Détail visible dans le calculateur.</td></tr>
       </table>
       <p class="muted" style="font-size:13px;margin-top:12px">Hébreu et grec ont été retirés (ils ne s'appliquent qu'à du texte écrit dans ces alphabets). Dites-le-moi pour les réactiver.</p>
     </div>
@@ -201,10 +209,11 @@
   <div class="tabpane" id="tab-about">
     <div class="card">
       <h2>Méthode &amp; honnêteté</h2>
-      <p>Cet atelier calcule la valeur numérique d'un mot français selon <b>3 systèmes</b> (Ordinal, Pythagore, Primosophie), accumule vos entrées localement (dans le navigateur) et repère automatiquement les <b>croisements</b> : entrées de même valeur.</p>
+      <p>Cet atelier calcule la valeur numérique d'un mot français selon <b>4 systèmes</b> (Ordinal, Pythagore, Primosophie, KATY), accumule vos entrées localement (dans le navigateur) et repère automatiquement les <b>croisements</b> : entrées de même valeur.</p>
       <ul class="muted">
         <li><b>Ordinal</b> (A=1…Z=26) et <b>Pythagore</b> (lettres réduites 1–9 puis somme) : standards.</li>
         <li><b>Primosophie</b> (Vermard / Laveau) : table déduite (A=1 puis nombres premiers), <b>à valider sur le livre</b>.</li>
+        <li><b>KATY</b> : système original « deux étages » (lettre → nombre → nombre écrit en lettres → somme).</li>
       </ul>
       <p class="muted" style="font-size:13px">⚠️ Un croisement n'est intéressant que sur les systèmes à <b>grande amplitude</b> (Primosophie, Ordinal) : deux grands nombres égaux, c'est rare. Sur les petits intervalles, tout se croise (biais de confirmation). À utiliser comme exploration symbolique, pas comme preuve. Détails dans <code>RAPPORT-RECHERCHE.md</code>.</p>
     </div>
@@ -221,6 +230,20 @@ const HEB_FINAL_GADOL = {'ך':500,'ם':600,'ן':700,'ף':800,'ץ':900};
 const GREEK = {α:1,β:2,γ:3,δ:4,ε:5,ζ:7,η:8,θ:9,ι:10,κ:20,λ:30,μ:40,ν:50,ξ:60,ο:70,π:80,ρ:100,σ:200,ς:200,τ:300,υ:400,φ:500,χ:600,ψ:700,ω:800,'ϛ':6,'ϝ':6,'ϟ':90,'ϙ':90,'ϡ':900};
 
 const PRIMO_DEFAULT = {A:1,B:2,C:3,D:5,E:7,F:11,G:13,H:17,I:19,J:23,K:29,L:31,M:37,N:41,O:43,P:47,Q:53,R:59,S:61,T:67,U:71,V:73,W:79,X:83,Y:89,Z:97};
+
+// KATY : lettre -> sa valeur (1..26) -> nombre écrit en toutes lettres -> somme ordinale de ce mot
+const NUM_FR = ['zero','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf','vingt','vingt et un','vingt-deux','vingt-trois','vingt-quatre','vingt-cinq','vingt-six'];
+function ordSum(s){ let t=0; for(const c of s.toUpperCase()){ const p=c.charCodeAt(0)-64; if(p>=1&&p<=26) t+=p; } return t; }
+function katyOf(latin){
+  let total=0; const rows=[];
+  for(const ch of latin){
+    const pos=ch.charCodeAt(0)-64;
+    const word=NUM_FR[pos]||'';
+    const sub=ordSum(word);
+    total+=sub; rows.push({ch,pos,word,sub});
+  }
+  return {total,rows};
+}
 
 /* ===================== ÉTAT ===================== */
 let primo = loadJSON('primoTable', {...PRIMO_DEFAULT});
@@ -264,6 +287,7 @@ function compute(text, ignoreAccents){
     out.lat_pyth = pyth;
     out.lat_pyth_red = digitRoot(pyth);
     out.primo = pr;
+    out.katy = katyOf(latin).total;
   }
 
   // --- HÉBREU ---
@@ -302,6 +326,7 @@ const SYS_META = {
   lat_pyth:{label:'Pythagore (chaque lettre réduite 1–9, puis somme)',cls:'t-lat',grp:'lat'},
   lat_pyth_red:{label:'Pythagore (réduit 1 chiffre)',cls:'t-lat',grp:'lat'},
   primo:{label:'Primosophie (nombres premiers)',cls:'t-primo',grp:'primo'},
+  katy:{label:'KATY (lettre → nombre → mot → somme)',cls:'t-katy',grp:'katy'},
   heb_std:{label:'Hébreu — Mispar Hechrachi (std)',cls:'t-heb',grp:'heb'},
   heb_gadol:{label:'Hébreu — Mispar Gadol',cls:'t-heb',grp:'heb'},
   heb_ordinal:{label:'Hébreu — Mispar Siduri (ordinal)',cls:'t-heb',grp:'heb'},
@@ -314,9 +339,9 @@ const SYS_META = {
 const HEB_SYS = ['heb_std','heb_gadol','heb_ordinal','heb_katan','heb_katanm','heb_atbash'];
 // ordre et titres lisibles des colonnes du tableau collection
 // Systèmes ACTIFS (français uniquement) : affichés ET pris en compte pour les croisements
-const SYSTEMS = ['lat_ord','lat_pyth','primo'];
+const SYSTEMS = ['lat_ord','lat_pyth','primo','katy'];
 const COL_ORDER = SYSTEMS;
-const COL_HEAD = {lat_ord:'Ordinal',lat_pyth:'Pythagore',primo:'Primosophie'};
+const COL_HEAD = {lat_ord:'Ordinal',lat_pyth:'Pythagore',primo:'Primosophie',katy:'KATY'};
 
 // systèmes à afficher selon les réglages
 function visibleSystems(values){
@@ -334,15 +359,24 @@ const input=$('input'), resultBody=$('resultBody'), scriptBadge=$('scriptBadge')
 function renderResults(){
   const txt=input.value.trim();
   const ignore=$('optAccents').checked;
-  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; renderLiveMatches(null); return; }
+  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; $('katyCard').style.display='none'; renderLiveMatches(null); return; }
   const {script,values}=compute(txt,ignore);
   scriptBadge.textContent = {heb:'Hébreu détecté',grk:'Grec détecté',lat:'Latin / Français',none:'—'}[script];
   const keys=SYSTEMS.filter(k=>values[k]!==undefined);
-  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Tapez un mot en lettres latines (français).</td></tr>'; renderLiveMatches(null); return; }
+  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Tapez un mot en lettres latines (français).</td></tr>'; $('katyCard').style.display='none'; renderLiveMatches(null); return; }
   resultBody.innerHTML = keys.map(k=>{
     const m=SYS_META[k];
     return `<tr><td><span class="tag ${m.cls}"></span>${m.label}</td><td class="val">${values[k]}</td></tr>`;
   }).join('');
+  // détail KATY
+  const latin=(ignore? stripAccents(txt):txt).toUpperCase().replace(/[^A-Z]/g,'');
+  if(latin.length){
+    const {rows,total}=katyOf(latin);
+    $('katyDetail').innerHTML = `<table><thead><tr><th>Lettre</th><th>Valeur</th><th>Écrit</th><th style="text-align:right">Somme</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td><b>${r.ch}</b></td><td class="muted">${r.pos}</td><td>« ${r.word} »</td><td class="val">${r.sub}</td></tr>`).join('')+
+      `<tr><td colspan="3" style="text-align:right"><b>Total KATY</b></td><td class="val" style="color:var(--katy)"><b>${total}</b></td></tr></tbody></table>`;
+    $('katyCard').style.display='block';
+  } else $('katyCard').style.display='none';
   renderLiveMatches(values, txt);
 }
 
