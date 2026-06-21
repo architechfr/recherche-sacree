@@ -126,6 +126,10 @@
       <p class="muted" style="font-size:13px;margin-top:-4px">En ajoutant ou retirant un petit mot (l', le, la, de, saint…), l'app teste si une variante tombe sur une valeur déjà présente dans votre collection, ou sur un nombre remarquable. C'est le « petit l' » qui fait toute la différence.</p>
       <div id="varBox"></div>
     </div>
+    <div class="card" id="mirrorCard" style="margin-top:18px;display:none">
+      <h2>🔁 Inverse (miroir)</h2>
+      <div id="mirrorBox"></div>
+    </div>
     <div class="card" id="liveCard" style="margin-top:18px;display:none">
       <h2>⟡ Combinaisons potentielles dans votre collection</h2>
       <p class="muted" style="font-size:13px;margin-top:-4px">Mots déjà enregistrés ayant la <b>même valeur</b> que votre saisie (croisement direct).</p>
@@ -426,11 +430,11 @@ const input=$('input'), resultBody=$('resultBody'), scriptBadge=$('scriptBadge')
 function renderResults(){
   const txt=input.value.trim();
   const ignore=$('optAccents').checked;
-  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; $('katyCard').style.display='none'; $('varCard').style.display='none'; renderLiveMatches(null); return; }
+  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; $('katyCard').style.display='none'; $('varCard').style.display='none'; $('mirrorCard').style.display='none'; renderLiveMatches(null); return; }
   const {script,values}=compute(txt,ignore);
   scriptBadge.textContent = {heb:'Hébreu détecté',grk:'Grec détecté',lat:'Latin / Français',none:'—'}[script];
   const keys=SYSTEMS.filter(k=>values[k]!==undefined);
-  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Tapez un mot en lettres latines (français).</td></tr>'; $('katyCard').style.display='none'; $('varCard').style.display='none'; renderLiveMatches(null); return; }
+  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Tapez un mot en lettres latines (français).</td></tr>'; $('katyCard').style.display='none'; $('varCard').style.display='none'; $('mirrorCard').style.display='none'; renderLiveMatches(null); return; }
   resultBody.innerHTML = keys.map(k=>{
     const m=SYS_META[k];
     return `<tr><td><span class="tag ${m.cls}"></span>${m.label}</td><td class="val">${values[k]}</td></tr>`;
@@ -446,6 +450,7 @@ function renderResults(){
   } else $('katyCard').style.display='none';
   renderLiveMatches(values, txt);
   renderVariants(txt);
+  renderMirror(txt);
 }
 
 // génère des variantes par ajout/retrait de petits mots
@@ -494,6 +499,26 @@ function renderVariants(txt){
     }).join('');
     return `<div class="matchgroup"><div class="head"><span style="font-weight:600">${escapeHtml(r.vt)}</span></div>${lines}</div>`;
   }).join('');
+}
+
+// miroir : mot écrit à l'envers (même valeur ; intéressant si le miroir est un mot)
+function revLetters(s){ return [...s].reverse().join(''); }
+function renderMirror(txt){
+  const card=$('mirrorCard'), box=$('mirrorBox');
+  const base=(txt||'').trim();
+  const ignore=$('optAccents').checked;
+  const cleaned=(ignore?stripAccents(base):base).toLowerCase().replace(/[^a-zà-ÿ]/g,'');
+  if(cleaned.length<2){ card.style.display='none'; return; }
+  const inColl=n=>collection.find(e=>norm(e.text.replace(/[^A-Za-zÀ-ÿ]/g,''))===n);
+  const tokens=base.split(/\s+/).filter(Boolean);
+  const rows=[];
+  // miroir mot entier (lettres collées)
+  rows.push({mot:base, miroir:revLetters(cleaned)});
+  // miroir de chaque mot si plusieurs
+  if(tokens.length>1) tokens.forEach(tk=>{ const c=(ignore?stripAccents(tk):tk).toLowerCase().replace(/[^a-zà-ÿ]/g,''); if(c.length>=2) rows.push({mot:tk, miroir:revLetters(c)}); });
+  card.style.display='block';
+  box.innerHTML = `<p class="muted" style="font-size:13px;margin-top:-4px">Un mot et son miroir ont <b>toujours la même valeur</b> (Ordinal, Primosophie, KATY) — l'intérêt est quand le miroir est lui aussi un mot porteur de sens (ex. amor ⇄ roma).</p>`+
+    rows.map(r=>{ const m=inColl(norm(r.miroir)); return `<div style="margin:3px 0"><b>${escapeHtml(r.mot)}</b> → <b style="color:var(--katy)">${escapeHtml(r.miroir)}</b>${m?` <span class="chip hit" style="font-size:12px">↔ dans votre collection : ${escapeHtml(m.text)}</span>`:''}</div>`; }).join('');
 }
 
 // propose en direct les mots déjà enregistrés de même valeur (croisement)
@@ -735,13 +760,14 @@ function renderLinks(byTarget,total){
   const tlist=Object.keys(byTarget).map(Number).sort((a,b)=>a-b);
   $('linksCount').textContent = total? `${total} lien(s) trouvé(s)` : '';
   if(!tlist.length){ box.innerHTML='<div class="empty">Aucun lien trouvé pour ces nombres avec la collection actuelle.</div>'; return; }
-  const CAP=80;
+  const CAP=500;
   const warn = total>500 ? `<div class="warn">${total} liens, c'est trop pour être signifiant. Réduisez « Combinaison max » à <b>2</b>, ou ciblez moins de nombres. Les liens vraiment forts sont les <b>mots seuls</b> (= cible) et les <b>paires</b> sur Primosophie ou Ordinal.</div>` : '';
   box.innerHTML = warn + tlist.map(T=>{
     const sysObj=byTarget[T];
     const blocks=Object.keys(sysObj).map(S=>{
       const combos=sysObj[S].sort((a,b)=>a.length-b.length);
-      const lines=combos.slice(0,CAP).map(c=>`<div style="margin:3px 0">${c.map(escapeHtml).join(' <span class="muted">+</span> ')} <span class="muted">= ${T}</span></div>`).join('');
+      const vmap={}; collection.forEach(e=>{ if(e.values[S]!==undefined) vmap[norm(e.text)]=e.values[S]; });
+      const lines=combos.slice(0,CAP).map(c=>`<div style="margin:3px 0">${c.map(w=>`${escapeHtml(w)} <span class="muted">(${vmap[norm(w)]})</span>`).join(' <span class="muted">+</span> ')} <span class="muted">= ${T}</span></div>`).join('');
       const extra=combos.length>CAP? `<div class="muted" style="font-size:12px">… +${combos.length-CAP} autres</div>`:'';
       return `<div style="margin:6px 0 10px"><div class="muted" style="font-size:12px;margin-bottom:3px"><span class="tag ${SYS_META[S].cls}"></span>${SYS_META[S].label} · ${combos.length}</div>${lines}${extra}</div>`;
     }).join('');
@@ -813,13 +839,12 @@ function renderNumberDetail(){
   const combos=combosForTarget(selectedNumber,3);
   let addBlocks='';
   if(Object.keys(combos).length){
-    const CAP=30;
     addBlocks = '<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px"><div class="muted" style="font-size:13px;margin-bottom:6px"><b>Additions de mots = '+selectedNumber+'</b></div>'+
       Object.keys(combos).map(k=>{
         const list=combos[k].sort((a,b)=>a.length-b.length);
-        const lines=list.slice(0,CAP).map(c=>`<div style="margin:2px 0">${c.map(escapeHtml).join(' <span class="muted">+</span> ')}</div>`).join('');
-        const extra=list.length>CAP?`<div class="muted" style="font-size:12px">… +${list.length-CAP} autres</div>`:'';
-        return `<div style="margin:6px 0"><div class="muted" style="font-size:12px"><span class="tag ${SYS_META[k].cls}"></span>${SYS_META[k].label} · ${list.length}</div>${lines}${extra}</div>`;
+        const vmap={}; collection.forEach(e=>{ if(e.values[k]!==undefined) vmap[norm(e.text)]=e.values[k]; });
+        const lines=list.map(c=>`<div style="margin:2px 0">${c.map(w=>`${escapeHtml(w)} <span class="muted">(${vmap[norm(w)]})</span>`).join(' <span class="muted">+</span> ')} <span class="muted">= ${selectedNumber}</span></div>`).join('');
+        return `<div style="margin:6px 0"><div class="muted" style="font-size:12px"><span class="tag ${SYS_META[k].cls}"></span>${SYS_META[k].label} · ${list.length}</div>${lines}</div>`;
       }).join('')+'</div>';
   }
   box.innerHTML = `<div class="matchgroup"><div class="head"><span class="v" style="font-size:28px">${selectedNumber}</span>${rk}</div>${blocks}${addBlocks}</div>`;
