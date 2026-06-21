@@ -119,6 +119,11 @@
       <p class="muted" style="font-size:13px;margin-top:-4px">Chaque lettre → sa valeur (A=1 … Z=26) → ce nombre écrit en toutes lettres → somme ordinale de ce mot.</p>
       <div id="katyDetail"></div>
     </div>
+    <div class="card" id="varCard" style="margin-top:18px;display:none">
+      <h2>🔀 Variantes qui créent un lien</h2>
+      <p class="muted" style="font-size:13px;margin-top:-4px">En ajoutant ou retirant un petit mot (l', le, la, de, saint…), l'app teste si une variante tombe sur une valeur déjà présente dans votre collection, ou sur un nombre remarquable. C'est le « petit l' » qui fait toute la différence.</p>
+      <div id="varBox"></div>
+    </div>
     <div class="card" id="liveCard" style="margin-top:18px;display:none">
       <h2>⟡ Combinaisons potentielles dans votre collection</h2>
       <p class="muted" style="font-size:13px;margin-top:-4px">Mots déjà enregistrés ayant la <b>même valeur</b> que votre saisie (croisement direct).</p>
@@ -359,11 +364,11 @@ const input=$('input'), resultBody=$('resultBody'), scriptBadge=$('scriptBadge')
 function renderResults(){
   const txt=input.value.trim();
   const ignore=$('optAccents').checked;
-  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; $('katyCard').style.display='none'; renderLiveMatches(null); return; }
+  if(!txt){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Saisissez du texte pour voir les valeurs.</td></tr>'; scriptBadge.textContent='—'; $('katyCard').style.display='none'; $('varCard').style.display='none'; renderLiveMatches(null); return; }
   const {script,values}=compute(txt,ignore);
   scriptBadge.textContent = {heb:'Hébreu détecté',grk:'Grec détecté',lat:'Latin / Français',none:'—'}[script];
   const keys=SYSTEMS.filter(k=>values[k]!==undefined);
-  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Tapez un mot en lettres latines (français).</td></tr>'; $('katyCard').style.display='none'; renderLiveMatches(null); return; }
+  if(!keys.length){ resultBody.innerHTML='<tr><td colspan="2" class="empty">Tapez un mot en lettres latines (français).</td></tr>'; $('katyCard').style.display='none'; $('varCard').style.display='none'; renderLiveMatches(null); return; }
   resultBody.innerHTML = keys.map(k=>{
     const m=SYS_META[k];
     return `<tr><td><span class="tag ${m.cls}"></span>${m.label}</td><td class="val">${values[k]}</td></tr>`;
@@ -378,6 +383,55 @@ function renderResults(){
     $('katyCard').style.display='block';
   } else $('katyCard').style.display='none';
   renderLiveMatches(values, txt);
+  renderVariants(txt);
+}
+
+// génère des variantes par ajout/retrait de petits mots
+function articleVariants(text){
+  const base=(text||'').trim();
+  const set=new Map();
+  const add=t=>{ t=(t||'').replace(/\s+/g,' ').trim(); if(t) set.set(norm(t),t); };
+  const PRE=["le ","la ","les ","l'","un ","une ","de ","des ","du ","mon ","ma ","mes ","notre ","saint ","sainte ","grand ","grande "];
+  PRE.forEach(p=>add(p+base));
+  const toks=base.split(' ');
+  if(toks.length>1) add(toks.slice(1).join(' '));   // retire le premier mot (souvent un article)
+  add(base.replace(/^[ldnmtcsj]['']/i,''));          // retire une élision initiale : l'ame -> ame
+  return [...set.values()].filter(v=>norm(v)!==norm(base));
+}
+// mots distincts de la collection ayant la valeur v dans le système k (hors excludeNorm)
+function distinctMatches(k,v,excludeNorm){
+  const seen=new Set(), out=[];
+  collection.forEach(e=>{ if(e.values[k]===v){ const n=norm(e.text); if(n!==excludeNorm && !seen.has(n)){ seen.add(n); out.push(e.text); } } });
+  return out;
+}
+function renderVariants(txt){
+  const card=$('varCard'), box=$('varBox');
+  const base=(txt||'').trim();
+  if(!base){ card.style.display='none'; return; }
+  const ignore=$('optAccents').checked;
+  const targetSet=new Set(targets);
+  const rows=[];
+  articleVariants(base).forEach(vt=>{
+    const {values}=compute(vt,ignore);
+    const hits=[];
+    SYSTEMS.forEach(k=>{
+      const v=values[k]; if(v===undefined) return;
+      const words=distinctMatches(k,v,norm(vt));
+      const remark=targetSet.has(v);
+      if(words.length||remark) hits.push({sys:k,v,words,remark});
+    });
+    if(hits.length) rows.push({vt,hits});
+  });
+  card.style.display='block';
+  if(!rows.length){ box.innerHTML='<div class="empty">Aucune variante (article ajouté/retiré) ne crée de lien pour l’instant.</div>'; return; }
+  box.innerHTML = rows.map(r=>{
+    const lines=r.hits.map(h=>{
+      const w = h.words.length? ` → ${h.words.map(escapeHtml).join(', ')}` : '';
+      const rk = h.remark? ' <b style="color:var(--accent)">★ nombre remarquable</b>' : '';
+      return `<div style="margin:2px 0"><span class="tag ${SYS_META[h.sys].cls}"></span>${COL_HEAD[h.sys]} <b>${h.v}</b>${w}${rk}</div>`;
+    }).join('');
+    return `<div class="matchgroup"><div class="head"><span style="font-weight:600">${escapeHtml(r.vt)}</span></div>${lines}</div>`;
+  }).join('');
 }
 
 // propose en direct les mots déjà enregistrés de même valeur (croisement)
