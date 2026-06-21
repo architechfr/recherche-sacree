@@ -87,6 +87,7 @@
     <button class="tab" data-tab="collection">Collection &amp; croisements</button>
     <button class="tab" data-tab="bynumber">🔢 Par nombre</button>
     <button class="tab" data-tab="numbers">Nombres remarquables</button>
+    <button class="tab" data-tab="corpus">📖 Corpus</button>
     <button class="tab" data-tab="settings">Tables &amp; réglages</button>
     <button class="tab" data-tab="about">À propos</button>
   </div>
@@ -208,6 +209,48 @@
     </div>
   </div>
 
+  <!-- ============ CORPUS ============ -->
+  <div class="tabpane" id="tab-corpus">
+    <div class="card" style="margin-bottom:18px">
+      <h2>Charger un texte (Genèse, Apocalypse…)</h2>
+      <div class="row" style="margin-top:0">
+        <input type="text" id="corpusName" placeholder="nom (ex. Genèse 1)" style="max-width:240px">
+      </div>
+      <textarea id="corpusInput" style="min-height:120px;margin-top:10px" placeholder="Collez le texte ici.&#10;Idéalement un verset par ligne, ou au format « 1:1 texte … 1:2 texte … »."></textarea>
+      <div class="row">
+        <button class="primary" id="btnParseCorpus">＋ Analyser et ajouter</button>
+        <button id="btnClearCorpus">🗑 Vider le corpus</button>
+        <span class="count" id="corpusCount"></span>
+      </div>
+      <p class="muted" style="font-size:12px">Astuce : copiez depuis une Bible du domaine public (Louis Segond 1910). Le découpage en versets est automatique.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <h2>Versets remarquables</h2>
+      <div class="row" style="margin-top:0;margin-bottom:10px">
+        <label class="pill">Système&nbsp;<select id="corpusSystem"></select></label>
+        <span class="muted" id="corpusHitInfo" style="font-size:12px"></span>
+      </div>
+      <div id="corpusTable"><div class="empty">Chargez un texte ci-dessus.</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <h2>Mots-clés remarquables</h2>
+      <div id="corpusWords"><div class="empty">Chargez un texte.</div></div>
+    </div>
+
+    <div class="card">
+      <h2>🎲 Test de significativité (Monte-Carlo)</h2>
+      <p class="muted" style="font-size:13px;margin-top:-4px">Compare le nombre de versets « remarquables » du texte réel à ce que produirait un texte <b>aléatoire</b> de mêmes longueurs et mêmes fréquences de lettres. Donne la probabilité (p-value) que ce soit le pur hasard. Remarquable = vos nombres cibles + répétitions (111, 222… 1111…).</p>
+      <div class="row" style="margin-top:0">
+        <label class="pill">Système&nbsp;<select id="mcSystem"></select></label>
+        <label class="pill">Tirages&nbsp;<select id="mcM"><option>500</option><option selected>1000</option><option>3000</option></select></label>
+        <button class="primary" id="btnMonteCarlo">Lancer le test</button>
+      </div>
+      <div id="mcResult" style="margin-top:12px"></div>
+    </div>
+  </div>
+
   <!-- ============ SETTINGS ============ -->
   <div class="tabpane" id="tab-settings">
     <div class="warn">⚠️ La table <b>Primosophie</b> est rétro-déduite (A=1 puis suite des nombres premiers) et vérifiée sur <code>bien=mal=69</code>. À confronter au livre de Mathieu Laveau. Vous pouvez la corriger ici — les modifications sont sauvegardées et recalculent tout.</div>
@@ -273,6 +316,7 @@ let primo = loadJSON('primoTable', {...PRIMO_DEFAULT});
 let collection = loadJSON('collection', []);
 let hebActive = loadJSON('hebActive', {heb_std:true,heb_gadol:true,heb_ordinal:true,heb_katan:true,heb_katanm:true,heb_atbash:false});
 let targets = loadJSON('targets', [111,222,333,444,555,666,777,888,999]);
+let corpus = loadJSON('corpus', []); // [{ref,text,values}] — séparé de la collection personnelle
 
 function loadJSON(k,def){try{const v=localStorage.getItem('gem_'+k);return v?JSON.parse(v):def;}catch(e){return def;}}
 function save(k,v){localStorage.setItem('gem_'+k,JSON.stringify(v));}
@@ -783,6 +827,115 @@ function renderNumberDetail(){
 $('numJump').addEventListener('input',()=>{ const v=parseInt($('numJump').value,10); selectedNumber = v>0? v : null; renderNumberDetail(); });
 $('onlyShared').addEventListener('change',renderNumberIndex);
 
+/* ===================== CORPUS (textes bibliques) ===================== */
+function isRemark(v,set){ if(set.has(v)) return true; if(v>=100){ const s=''+v; if(/^(\d)\1+$/.test(s)) return true; } return false; }
+function remarkableSet(){ return new Set(targets); }
+function sysLetterValues(S){
+  const arr=new Array(26);
+  for(let i=0;i<26;i++){ const L=String.fromCharCode(65+i);
+    arr[i] = S==='lat_ord'? i+1 : S==='lat_pyth'? digitRoot(i+1) : S==='primo'? (primo[L]||0) : S==='katy'? ordSum(NUM_FR[i+1]) : 0;
+  }
+  return arr;
+}
+// découpe un texte collé en versets (plusieurs formats tolérés)
+function parseVerses(raw,name){
+  raw=(raw||'').replace(/\r/g,'').trim(); const pre=name?name+' ':''; const out=[];
+  if(/\b\d{1,3}:\d{1,3}\b/.test(raw)){
+    raw.split(/(?=\b\d{1,3}:\d{1,3}\b)/).forEach(p=>{ const m=p.match(/^(\d{1,3}:\d{1,3})\s*([\s\S]*)$/); if(m && m[2].trim()) out.push({ref:m[1],text:m[2].replace(/\s+/g,' ').trim()}); });
+  } else {
+    const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+    if(lines.length>1){
+      lines.forEach((l,i)=>{ const m=l.match(/^(\d{1,3})[\.\)]?\s+([\s\S]*)$/); out.push(m?{ref:pre+m[1],text:m[2].replace(/\s+/g,' ').trim()}:{ref:pre+(i+1),text:l}); });
+    } else {
+      raw.split(/\s(?=\d{1,3}\s+[A-Za-zÀ-ÿ])/).forEach((p,i)=>{ const m=p.match(/^(\d{1,3})\s+([\s\S]*)$/); if(m) out.push({ref:pre+m[1],text:m[2].replace(/\s+/g,' ').trim()}); else if(p.trim()) out.push({ref:pre+(i+1),text:p.replace(/\s+/g,' ').trim()}); });
+    }
+  }
+  return out.filter(v=>v.text);
+}
+function populateCorpusSystems(){
+  const opts=SYSTEMS.map(k=>`<option value="${k}">${COL_HEAD[k]}</option>`).join('');
+  $('corpusSystem').innerHTML=opts; $('mcSystem').innerHTML=opts;
+}
+function corpusInfo(){ $('corpusCount').textContent = corpus.length? `${corpus.length} verset(s)` : ''; }
+function renderCorpusTable(){
+  const box=$('corpusTable'); corpusInfo();
+  if(!corpus.length){ box.innerHTML='<div class="empty">Chargez un texte ci-dessus.</div>'; $('corpusHitInfo').textContent=''; return; }
+  const S=$('corpusSystem').value||SYSTEMS[0];
+  const set=remarkableSet();
+  const hits=corpus.filter(v=>isRemark(v.values[S],set));
+  $('corpusHitInfo').textContent = `${hits.length} verset(s) remarquable(s) sur ${corpus.length} en ${COL_HEAD[S]}`;
+  const CAP=300; const list=corpus.slice(0,CAP);
+  const rows=list.map(v=>{
+    const val=v.values[S]; const rk=isRemark(val,set);
+    const txt=v.text.length>90? v.text.slice(0,90)+'…':v.text;
+    return `<tr><td class="muted" style="white-space:nowrap">${escapeHtml(v.ref)}</td><td>${escapeHtml(txt)}</td><td class="val${rk?' cellhit':''}">${val}</td></tr>`;
+  }).join('');
+  const extra=corpus.length>CAP?`<div class="muted" style="font-size:12px;margin-top:6px">… ${corpus.length-CAP} versets non affichés (calculés quand même)</div>`:'';
+  box.innerHTML=`<table class="collection"><thead><tr><th>Réf.</th><th>Verset</th><th>${COL_HEAD[S]}</th></tr></thead><tbody>${rows}</tbody></table>${extra}`;
+}
+function renderCorpusWords(){
+  const box=$('corpusWords');
+  if(!corpus.length){ box.innerHTML='<div class="empty">Chargez un texte.</div>'; return; }
+  const set=remarkableSet();
+  const seen=new Set(), words=[];
+  corpus.forEach(v=>v.text.split(/\s+/).forEach(w=>{ const n=norm(w.replace(/[^A-Za-zÀ-ÿ']/g,'')); if(n.length>=2 && !seen.has(n)){ seen.add(n); words.push(w.replace(/[^A-Za-zÀ-ÿ']/g,'')); } }));
+  const found=[];
+  words.forEach(w=>{ const val=compute(w,true).values; const hsys=SYSTEMS.filter(k=>isRemark(val[k],set)); if(hsys.length) found.push({w,val,hsys}); });
+  found.sort((a,b)=>a.w.localeCompare(b.w));
+  box.innerHTML = found.length
+    ? found.map(f=>`<div class="matchgroup" style="padding:8px 12px"><b>${escapeHtml(f.w)}</b> ${f.hsys.map(k=>`<span class="chip hit" style="font-size:12px"><span class="tag ${SYS_META[k].cls}" style="width:7px;height:7px"></span>${COL_HEAD[k]} ${f.val[k]}</span>`).join(' ')}</div>`).join('')
+    : '<div class="empty">Aucun mot remarquable (valeur = cible ou répétition) dans ce corpus.</div>';
+}
+function corpusLetterData(){
+  const pool=[], lengths=[];
+  corpus.forEach(v=>{ const latin=stripAccents(v.text).toUpperCase().replace(/[^A-Z]/g,''); lengths.push(latin.length); for(const c of latin) pool.push(c.charCodeAt(0)-65); });
+  return {pool,lengths};
+}
+function monteCarlo(){
+  const box=$('mcResult');
+  if(!corpus.length){ box.innerHTML='<div class="empty">Chargez d\'abord un texte.</div>'; return; }
+  const S=$('mcSystem').value||SYSTEMS[0];
+  const M=+$('mcM').value;
+  const set=remarkableSet();
+  const V=sysLetterValues(S);
+  const {pool,lengths}=corpusLetterData();
+  if(!pool.length){ box.innerHTML='<div class="empty">Texte vide.</div>'; return; }
+  let observed=0; corpus.forEach(v=>{ if(isRemark(v.values[S],set)) observed++; });
+  let ge=0, sum=0, maxNull=0; const PL=pool.length;
+  for(let t=0;t<M;t++){
+    let hits=0;
+    for(let u=0;u<lengths.length;u++){ const L=lengths[u]; let s=0; for(let j=0;j<L;j++){ s+=V[pool[(Math.random()*PL)|0]]; } if(isRemark(s,set)) hits++; }
+    if(hits>=observed) ge++; sum+=hits; if(hits>maxNull) maxNull=hits;
+  }
+  const p=(ge+1)/(M+1); const mean=sum/M;
+  let verdict, color;
+  if(p<0.01){ verdict='Très significatif — peu probable que ce soit le hasard.'; color='var(--heb)'; }
+  else if(p<0.05){ verdict='Significatif — au-delà du hasard ordinaire.'; color='var(--accent)'; }
+  else { verdict='Compatible avec le hasard — pas de signal détecté.'; color='var(--muted)'; }
+  box.innerHTML = `<div class="matchgroup">
+    <div class="head"><span class="v">p = ${p.toFixed(4)}</span><span class="muted">${COL_HEAD[S]} · ${M} tirages</span></div>
+    <table>
+      <tr><td>Versets remarquables (texte réel)</td><td class="val"><b>${observed}</b></td></tr>
+      <tr><td>Moyenne attendue par hasard</td><td class="val">${mean.toFixed(2)}</td></tr>
+      <tr><td>Maximum obtenu au hasard</td><td class="val">${maxNull}</td></tr>
+    </table>
+    <div style="margin-top:8px;color:${color}"><b>${verdict}</b></div>
+    <div class="muted" style="font-size:12px;margin-top:4px">p = probabilité d'obtenir au moins ${observed} versets remarquables par pur hasard. Plus c'est petit, plus le résultat est notable.</div>
+  </div>`;
+}
+$('btnParseCorpus').onclick=()=>{
+  const raw=$('corpusInput').value, name=$('corpusName').value.trim();
+  const verses=parseVerses(raw,name);
+  if(!verses.length){ flash($('btnParseCorpus'),'⚠ Rien à analyser'); return; }
+  verses.forEach(v=>{ v.values=compute(v.text,true).values; corpus.push(v); });
+  save('corpus',corpus);
+  $('corpusInput').value=''; renderCorpusTable(); renderCorpusWords();
+  flash($('btnParseCorpus'),`✓ ${verses.length} versets`);
+};
+$('btnClearCorpus').onclick=()=>{ if(confirm('Vider tout le corpus ?')){ corpus=[]; save('corpus',corpus); renderCorpusTable(); renderCorpusWords(); $('mcResult').innerHTML=''; } };
+$('corpusSystem').addEventListener('change',renderCorpusTable);
+$('btnMonteCarlo').onclick=monteCarlo;
+
 /* ===================== TABS ===================== */
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -790,6 +943,7 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   t.classList.add('active'); $('tab-'+t.dataset.tab).classList.add('active');
   if(t.dataset.tab==='numbers') findLinks();
   if(t.dataset.tab==='bynumber') renderNumberIndex();
+  if(t.dataset.tab==='corpus'){ renderCorpusTable(); renderCorpusWords(); }
 });
 
 /* ===================== INIT ===================== */
@@ -801,7 +955,7 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   collection.forEach(e=>{ e.values=compute(e.text, e.ignore).values; });
   save('collection',collection);
 })();
-buildPrimoEditor(); renderTargetChips(); populateNumSystem(); renderCollection(); renderMatches(); renderResults();
+buildPrimoEditor(); renderTargetChips(); populateNumSystem(); populateCorpusSystems(); corpusInfo(); renderCollection(); renderMatches(); renderResults();
 </script>
 </body>
 </html>
