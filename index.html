@@ -283,15 +283,25 @@
       <p class="muted" style="font-size:13px;margin-top:12px">Hébreu et grec ont été retirés (ils ne s'appliquent qu'à du texte écrit dans ces alphabets). Dites-le-moi pour les réactiver.</p>
     </div>
     <div class="card" style="margin-top:18px">
-      <h2>Assistant IA (Gemini)</h2>
-      <p class="muted" style="font-size:13px;margin-top:-4px">Clé API gratuite : créez-en une sur <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com</a>. Stockée uniquement sur votre machine (navigateur). ⚠️ Chaque requête envoie le texte concerné à Google.</p>
+      <h2>Assistant IA</h2>
+      <p class="muted" style="font-size:13px;margin-top:-4px">Choisissez un fournisseur gratuit. La clé est stockée uniquement sur votre machine. ⚠️ Chaque requête envoie le texte concerné au service choisi.</p>
       <div class="row" style="margin-top:6px">
-        <input type="password" id="geminiKey" placeholder="clé API Gemini" style="max-width:340px">
-        <input type="text" id="geminiModel" placeholder="modèle" style="max-width:200px">
+        <label class="pill">Fournisseur&nbsp;<select id="aiProvider">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">Compatible OpenAI (Kimi, OpenRouter, Groq…)</option>
+        </select></label>
+      </div>
+      <div class="row" id="aiBaseRow" style="display:none">
+        <input type="text" id="aiBase" placeholder="URL de base (ex. https://openrouter.ai/api/v1)" style="max-width:380px">
+      </div>
+      <div class="row">
+        <input type="password" id="aiKey" placeholder="clé API" style="max-width:340px">
+        <input type="text" id="aiModel" placeholder="modèle" style="max-width:240px">
         <button id="btnSaveKey">Enregistrer</button>
         <button id="btnTestKey">Tester</button>
         <span class="muted" id="keyStatus" style="font-size:12px"></span>
       </div>
+      <p class="muted" id="aiHint" style="font-size:12px"></p>
     </div>
   </div>
 
@@ -1000,11 +1010,24 @@ $('corpusSystem').addEventListener('change',renderCorpusTable);
 $('btnMonteCarlo').onclick=monteCarlo;
 
 /* ===================== ASSISTANT IA (GEMINI) ===================== */
-const GEMINI_MODEL_DEFAULT='gemini-2.0-flash';
-async function callGemini(prompt){
-  const key=localStorage.getItem('gem_geminiKey');
+const AI_DEFAULTS={
+  gemini:{model:'gemini-1.5-flash', base:'', hint:'Gemini : clé gratuite sur aistudio.google.com/apikey. Modèles à essayer : gemini-1.5-flash, gemini-2.5-flash, gemini-2.0-flash-lite.'},
+  openai:{model:'google/gemini-2.0-flash-exp:free', base:'https://openrouter.ai/api/v1', hint:'OpenRouter (recommandé — modèles gratuits, marche dans le navigateur) : clé sur openrouter.ai/keys, modèles « ...:free ». • Kimi : base https://api.moonshot.ai/v1, modèle kimi-k2-0711-preview, clé platform.moonshot.ai. • Groq : base https://api.groq.com/openai/v1, modèle llama-3.3-70b-versatile.'}
+};
+function hasAiKey(){ return !!(localStorage.getItem('gem_aiKey')||localStorage.getItem('gem_geminiKey')); }
+async function callAI(prompt){
+  const provider=localStorage.getItem('gem_aiProvider')||'gemini';
+  const key=localStorage.getItem('gem_aiKey')||localStorage.getItem('gem_geminiKey')||'';
   if(!key) throw new Error('NO_KEY');
-  const model=localStorage.getItem('gem_geminiModel')||GEMINI_MODEL_DEFAULT;
+  if(provider==='openai'){
+    const base=(localStorage.getItem('gem_aiBase')||AI_DEFAULTS.openai.base).replace(/\/+$/,'');
+    const model=localStorage.getItem('gem_aiModel')||AI_DEFAULTS.openai.model;
+    const res=await fetch(base+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error((data.error&&(data.error.message||data.error))||('HTTP '+res.status));
+    return (data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'(réponse vide)';
+  }
+  const model=localStorage.getItem('gem_aiModel')||localStorage.getItem('gem_geminiModel')||AI_DEFAULTS.gemini.model;
   const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
   const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
   const data=await res.json().catch(()=>({}));
@@ -1012,7 +1035,7 @@ async function callGemini(prompt){
   const t=data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0].text;
   return t||'(réponse vide)';
 }
-function aiNoKey(){ return '<div class="warn">Aucune clé API. Allez dans <b>Tables &amp; réglages → Assistant IA</b> et collez une clé Gemini gratuite (aistudio.google.com).</div>'; }
+function aiNoKey(){ return '<div class="warn">Aucune clé configurée. Allez dans <b>Tables &amp; réglages → Assistant IA</b>, choisissez un fournisseur et collez une clé.</div>'; }
 function addWordToCollection(t){
   if(collection.some(e=>norm(e.text)===norm(t))) return false;
   const ign=$('optAccents').checked;
@@ -1022,10 +1045,10 @@ function addWordToCollection(t){
 $('btnAiRelated').onclick=async()=>{
   const w=$('input').value.trim();
   if(!w){ $('aiResult').innerHTML='<div class="empty">Tapez d\'abord un mot.</div>'; return; }
-  if(!localStorage.getItem('gem_geminiKey')){ $('aiResult').innerHTML=aiNoKey(); return; }
+  if(!hasAiKey()){ $('aiResult').innerHTML=aiNoKey(); return; }
   $('aiStatus').textContent='recherche…'; $('aiResult').innerHTML='';
   try{
-    const txt=await callGemini(`Recherche symbolique par guématrie en français. Donne EXACTEMENT 12 mots ou courtes expressions en français fortement associés au concept « ${w} » (synonymes, symboles, notions liées, archétypes spirituels). Réponds uniquement par la liste, un terme par ligne, sans numérotation ni ponctuation.`);
+    const txt=await callAI(`Recherche symbolique par guématrie en français. Donne EXACTEMENT 12 mots ou courtes expressions en français fortement associés au concept « ${w} » (synonymes, symboles, notions liées, archétypes spirituels). Réponds uniquement par la liste, un terme par ligne, sans numérotation ni ponctuation.`);
     const words=txt.split('\n').map(s=>s.replace(/^[-*\d.\)\s]+/,'').trim()).filter(s=>s.length>1).slice(0,20);
     $('aiResult').innerHTML='<div class="muted" style="font-size:12px;margin-bottom:6px">Cliquez pour ajouter à la collection :</div>'+
       words.map(x=>`<span class="chip aiword" style="cursor:pointer;margin:3px" data-w="${escapeHtml(x).replace(/"/g,'&quot;')}">＋ ${escapeHtml(x)}</span>`).join('');
@@ -1036,21 +1059,45 @@ $('btnAiRelated').onclick=async()=>{
 $('btnAiInterpret').onclick=async()=>{
   const w=$('input').value.trim();
   if(!w){ $('aiResult').innerHTML='<div class="empty">Tapez d\'abord un mot.</div>'; return; }
-  if(!localStorage.getItem('gem_geminiKey')){ $('aiResult').innerHTML=aiNoKey(); return; }
+  if(!hasAiKey()){ $('aiResult').innerHTML=aiNoKey(); return; }
   $('aiStatus').textContent='réflexion…'; $('aiResult').innerHTML='';
   const v=compute(w,$('optAccents').checked).values;
   const cross=[]; SYSTEMS.forEach(k=>{ if(v[k]==null) return; const m=distinctMatches(k,v[k],norm(w)); if(m.length) cross.push(`${COL_HEAD[k]} ${v[k]} = ${m.join(', ')}`); });
   const crossTxt=cross.length?('Croisements dans la collection: '+cross.join(' ; ')+'.'):'';
   try{
-    const txt=await callGemini(`Tu es un guide en symbolique des nombres et guématrie française, nuancé et non dogmatique. Mot: « ${w} ». Valeurs: Ordinal ${v.lat_ord}, Pythagore ${v.lat_pyth}, Primosophie ${v.primo}, KATY ${v.katy}. ${crossTxt} Propose une interprétation symbolique en 4 à 6 phrases, en français, en rappelant que ce sont des correspondances et non des preuves.`);
+    const txt=await callAI(`Tu es un guide en symbolique des nombres et guématrie française, nuancé et non dogmatique. Mot: « ${w} ». Valeurs: Ordinal ${v.lat_ord}, Pythagore ${v.lat_pyth}, Primosophie ${v.primo}, KATY ${v.katy}. ${crossTxt} Propose une interprétation symbolique en 4 à 6 phrases, en français, en rappelant que ce sont des correspondances et non des preuves.`);
     $('aiResult').innerHTML=`<div class="matchgroup" style="white-space:pre-wrap;line-height:1.55">${escapeHtml(txt)}</div>`;
   }catch(e){ $('aiResult').innerHTML='<div class="warn">Erreur : '+escapeHtml(e.message)+'</div>'; }
   $('aiStatus').textContent='';
 };
-// réglages clé
-(function(){ if($('geminiKey')){ $('geminiKey').value=localStorage.getItem('gem_geminiKey')||''; $('geminiModel').value=localStorage.getItem('gem_geminiModel')||GEMINI_MODEL_DEFAULT; } })();
-$('btnSaveKey').onclick=()=>{ localStorage.setItem('gem_geminiKey',$('geminiKey').value.trim()); localStorage.setItem('gem_geminiModel',$('geminiModel').value.trim()||GEMINI_MODEL_DEFAULT); flash($('btnSaveKey'),'✓ Enregistré'); };
-$('btnTestKey').onclick=async()=>{ $('keyStatus').textContent='test…'; try{ const r=await callGemini('Réponds uniquement par : OK'); $('keyStatus').textContent='✓ '+r.trim().slice(0,40); }catch(e){ $('keyStatus').textContent='✗ '+e.message; } };
+// réglages IA (multi-fournisseurs)
+function applyAiProviderUI(){ const p=$('aiProvider').value; $('aiBaseRow').style.display = p==='openai'?'flex':'none'; $('aiHint').textContent=AI_DEFAULTS[p].hint; }
+function loadAiSettings(){
+  if(!$('aiProvider')) return;
+  const p=localStorage.getItem('gem_aiProvider')||'gemini';
+  $('aiProvider').value=p;
+  $('aiKey').value=localStorage.getItem('gem_aiKey')||localStorage.getItem('gem_geminiKey')||'';
+  $('aiModel').value=localStorage.getItem('gem_aiModel')||localStorage.getItem('gem_geminiModel')||AI_DEFAULTS[p].model;
+  $('aiBase').value=localStorage.getItem('gem_aiBase')||AI_DEFAULTS[p].base;
+  applyAiProviderUI();
+}
+$('aiProvider').onchange=()=>{
+  const p=$('aiProvider').value;
+  const known=Object.values(AI_DEFAULTS).map(d=>d.model);
+  if(!$('aiModel').value || known.includes($('aiModel').value)) $('aiModel').value=AI_DEFAULTS[p].model;
+  if(p==='openai' && !$('aiBase').value) $('aiBase').value=AI_DEFAULTS.openai.base;
+  applyAiProviderUI();
+};
+$('btnSaveKey').onclick=()=>{
+  localStorage.setItem('gem_aiProvider',$('aiProvider').value);
+  localStorage.setItem('gem_aiKey',$('aiKey').value.trim());
+  localStorage.setItem('gem_aiModel',$('aiModel').value.trim()||AI_DEFAULTS[$('aiProvider').value].model);
+  localStorage.setItem('gem_aiBase',$('aiBase').value.trim());
+  localStorage.removeItem('gem_geminiKey'); localStorage.removeItem('gem_geminiModel');
+  flash($('btnSaveKey'),'✓ Enregistré');
+};
+$('btnTestKey').onclick=async()=>{ $('keyStatus').textContent='test…'; try{ const r=await callAI('Réponds uniquement par : OK'); $('keyStatus').textContent='✓ '+r.trim().slice(0,40); }catch(e){ $('keyStatus').textContent='✗ '+e.message; } };
+loadAiSettings();
 
 /* ===================== TABS ===================== */
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
