@@ -116,6 +116,16 @@
         </tbody></table>
       </div>
     </div>
+    <div class="card" id="aiCard" style="margin-top:18px">
+      <h2>🤖 Assistant IA</h2>
+      <div class="row" style="margin-top:0">
+        <button id="btnAiSpell">✓ Corriger l'orthographe</button>
+        <button id="btnAiRelated">💡 Idées liées</button>
+        <button id="btnAiInterpret">🔮 Interpréter</button>
+        <span class="muted" id="aiStatus" style="font-size:12px"></span>
+      </div>
+      <div id="aiResult" style="margin-top:10px"></div>
+    </div>
     <div class="card" id="katyCard" style="margin-top:18px;display:none">
       <h2>🔮 Détail KATY — calcul ultra-profond</h2>
       <p class="muted" style="font-size:13px;margin-top:-4px">Chaque lettre → sa valeur (A=1 … Z=26) → ce nombre écrit en toutes lettres → somme ordinale de ce mot.</p>
@@ -129,16 +139,6 @@
     <div class="card" id="mirrorCard" style="margin-top:18px;display:none">
       <h2>🔁 Inverse (miroir)</h2>
       <div id="mirrorBox"></div>
-    </div>
-    <div class="card" id="aiCard" style="margin-top:18px">
-      <h2>🤖 Assistant IA</h2>
-      <div class="row" style="margin-top:0">
-        <button id="btnAiSpell">✓ Corriger l'orthographe</button>
-        <button id="btnAiRelated">💡 Idées liées</button>
-        <button id="btnAiInterpret">🔮 Interpréter</button>
-        <span class="muted" id="aiStatus" style="font-size:12px"></span>
-      </div>
-      <div id="aiResult" style="margin-top:10px"></div>
     </div>
     <div class="card" id="liveCard" style="margin-top:18px;display:none">
       <h2>⟡ Combinaisons potentielles dans votre collection</h2>
@@ -974,7 +974,8 @@ function monteCarlo(){
   const V=sysLetterValues(S);
   const {pool,lengths}=corpusLetterData();
   if(!pool.length){ box.innerHTML='<div class="empty">Texte vide.</div>'; return; }
-  let observed=0; corpus.forEach(v=>{ if(isRemark(v.values[S],set)) observed++; });
+  const remarkVerses=corpus.filter(v=>isRemark(v.values[S],set));
+  const observed=remarkVerses.length;
   let ge=0, sum=0, maxNull=0; const PL=pool.length;
   for(let t=0;t<M;t++){
     let hits=0;
@@ -995,6 +996,7 @@ function monteCarlo(){
     </table>
     <div style="margin-top:8px;color:${color}"><b>${verdict}</b></div>
     <div class="muted" style="font-size:12px;margin-top:4px">p = probabilité d'obtenir au moins ${observed} versets remarquables par pur hasard. Plus c'est petit, plus le résultat est notable.</div>
+    ${remarkVerses.length?`<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"><div class="muted" style="font-size:12px;margin-bottom:4px">Verset(s) remarquable(s) — ${COL_HEAD[S]} :</div>${remarkVerses.map(v=>`<div style="margin:4px 0"><span class="muted">${escapeHtml(v.ref)}</span> — <b style="color:var(--accent)">${v.values[S]}</b> : ${escapeHtml(v.text)}</div>`).join('')}</div>`:''}
   </div>`;
 }
 $('btnParseCorpus').onclick=()=>{
