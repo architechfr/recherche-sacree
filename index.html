@@ -204,6 +204,7 @@ function save(k,v){localStorage.setItem('gem_'+k,JSON.stringify(v));}
 
 /* ===================== UTILITAIRES ===================== */
 const stripAccents = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'');
+const norm = t => (t||'').trim().replace(/\s+/g,' ').toLowerCase(); // clé d'unicité d'un mot
 function digitRoot(n){ if(n<=0) return 0; return 1+((n-1)%9); }
 function katanLetter(v){ while(v>=10 && v%10===0) v=v/10; return v; } // 10->1,100->1,200->2,400->4
 
@@ -324,7 +325,13 @@ function renderLiveMatches(values, txt){
   const rows=[];
   SYSTEMS.forEach(k=>{
     const v=values[k]; if(v===undefined) return;
-    const matches=collection.filter(e=>e.values[k]===v && e.text.toLowerCase()!==(txt||'').toLowerCase());
+    const seen=new Set();
+    const matches=collection.filter(e=>{
+      if(e.values[k]!==v) return false;
+      const n=norm(e.text);
+      if(n===norm(txt)||seen.has(n)) return false;
+      seen.add(n); return true;
+    });
     if(matches.length){
       const words=matches.map(e=>`<span class="mword">${escapeHtml(e.text)}</span>`).join('');
       rows.push(`<div class="matchgroup"><div class="head"><span class="v">${v}</span><span class="muted">${SYS_META[k].label} · ${matches.length} trouvé(s)</span></div><div class="words">${words}</div></div>`);
@@ -341,6 +348,7 @@ $('btnSave').addEventListener('click',()=>{
   const ignore=$('optAccents').checked;
   const {script,values}=compute(txt,ignore);
   if(!Object.keys(values).length) return;
+  if(collection.some(e=>norm(e.text)===norm(txt))){ flash($('btnSave'),'⚠ Déjà enregistré'); input.value=''; renderResults(); return; }
   collection.unshift({id:Date.now()+'-'+Math.round(performance.now()),text:txt,script,ignore,values});
   save('collection',collection);
   input.value=''; renderResults(); renderCollection(); renderMatches();
@@ -360,13 +368,15 @@ function populateSystemFilter(){
 
 // index des valeurs -> pour surligner les croisements
 function buildHitIndex(){
-  const same={}; // "sys|val" -> nombre d'entrées (sur les systèmes actifs uniquement)
+  const sets={}; // "sys|val" -> ensemble de mots DISTINCTS
   collection.forEach(e=>{
     SYSTEMS.forEach(k=>{
       const v=e.values[k]; if(v===undefined) return;
-      same[k+'|'+v]=(same[k+'|'+v]||0)+1;
+      const key=k+'|'+v; (sets[key]=sets[key]||new Set()).add(norm(e.text));
     });
   });
+  const same={};
+  Object.keys(sets).forEach(key=>same[key]=sets[key].size); // compte de mots distincts
   return {same};
 }
 
@@ -417,7 +427,7 @@ function renderMatches(){
       const key=k+'|'+v; (map[key]=map[key]||[]).push({e,sys:k,v});
     }));
     Object.values(map).forEach(arr=>{
-      const uniq=new Set(arr.map(a=>a.e.id));
+      const uniq=new Set(arr.map(a=>norm(a.e.text)));
       if(uniq.size>1) groups.push({v:arr[0].v,sys:arr[0].sys,items:dedupe(arr)});
     });
     groups.sort((a,b)=>b.items.length-a.items.length || a.v-b.v);
@@ -428,7 +438,7 @@ function renderMatches(){
       (map[v]=map[v]||[]).push({e,sys:k,v});
     }));
     Object.entries(map).forEach(([v,arr])=>{
-      const uniq=new Set(arr.map(a=>a.e.id));
+      const uniq=new Set(arr.map(a=>norm(a.e.text)));
       if(uniq.size>1) groups.push({v:+v,sys:null,items:dedupe(arr)});
     });
     groups.sort((a,b)=>b.items.length-a.items.length || a.v-b.v);
@@ -440,9 +450,9 @@ function renderMatches(){
     return `<div class="matchgroup"><div class="head"><span class="v">${g.v}</span><span class="muted">${sysLabel} · ${new Set(g.items.map(i=>i.e.id)).size} entrées</span></div><div class="words">${words}</div></div>`;
   }).join('');
 }
-function dedupe(arr){ // garde une occurrence par (entrée,système) pour affichage lisible
+function dedupe(arr){ // fusionne les mots identiques (même texte) pour un même système
   const seen=new Set(),out=[];
-  arr.forEach(a=>{const k=a.e.id+'|'+a.sys; if(!seen.has(k)){seen.add(k);out.push(a);}});
+  arr.forEach(a=>{const k=norm(a.e.text)+'|'+a.sys; if(!seen.has(k)){seen.add(k);out.push(a);}});
   return out;
 }
 document.querySelectorAll('input[name=xmode]').forEach(r=>r.addEventListener('change',renderMatches));
@@ -462,8 +472,8 @@ $('fileImport').onchange=ev=>{
     const d=JSON.parse(r.result);
     if(Array.isArray(d.collection)){
       // fusion : on évite les doublons stricts texte+script
-      const existing=new Set(collection.map(e=>e.text+'|'+e.script));
-      d.collection.forEach(e=>{ if(!existing.has(e.text+'|'+e.script)){collection.push(e);} });
+      const existing=new Set(collection.map(e=>norm(e.text)));
+      d.collection.forEach(e=>{ const n=norm(e.text); if(!existing.has(n)){existing.add(n);collection.push(e);} });
       save('collection',collection);
     }
     if(d.primo){ primo={...primo,...d.primo}; save('primoTable',primo); recomputeAll(); buildPrimoEditor(); }
@@ -506,6 +516,12 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
 });
 
 /* ===================== INIT ===================== */
+// nettoyage des doublons hérités (même mot enregistré plusieurs fois)
+(function(){
+  const seen=new Set(); const before=collection.length;
+  collection=collection.filter(e=>{const n=norm(e.text); if(seen.has(n))return false; seen.add(n); return true;});
+  if(collection.length!==before) save('collection',collection);
+})();
 buildPrimoEditor(); renderCollection(); renderMatches(); renderResults();
 </script>
 </body>
