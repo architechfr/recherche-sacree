@@ -137,6 +137,7 @@
       <div class="toolbar">
         <input type="text" id="search" placeholder="Filtrer…">
         <select id="filterSystem"><option value="">Tous les systèmes</option></select>
+        <button id="btnRecompute">🔄 Recalculer tout</button>
         <button id="btnExport">⬇ Exporter JSON</button>
         <button id="btnImport">⬆ Importer JSON</button>
         <button id="btnClear">🗑 Tout effacer</button>
@@ -600,6 +601,7 @@ $('fileImport').onchange=ev=>{
   r.readAsText(f); ev.target.value='';
 };
 $('btnClear').onclick=()=>{ if(confirm('Effacer toute la collection ?')){collection=[];save('collection',collection);renderCollection();renderMatches();} };
+$('btnRecompute').onclick=()=>{ recomputeAll(); flash($('btnRecompute'),'✓ Recalculé'); };
 
 /* ===================== SETTINGS ===================== */
 function buildPrimoEditor(){
@@ -699,11 +701,13 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
 });
 
 /* ===================== INIT ===================== */
-// nettoyage des doublons hérités (même mot enregistré plusieurs fois)
+// nettoyage des doublons + migration : recalcule toutes les entrées pour intégrer
+// d'éventuels nouveaux systèmes (ex. KATY ajouté après coup)
 (function(){
-  const seen=new Set(); const before=collection.length;
+  const seen=new Set();
   collection=collection.filter(e=>{const n=norm(e.text); if(seen.has(n))return false; seen.add(n); return true;});
-  if(collection.length!==before) save('collection',collection);
+  collection.forEach(e=>{ e.values=compute(e.text, e.ignore).values; });
+  save('collection',collection);
 })();
 buildPrimoEditor(); renderTargetChips(); populateNumSystem(); renderCollection(); renderMatches(); renderResults();
 </script>
