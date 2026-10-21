@@ -157,6 +157,7 @@
         <button id="btnExport">⬇ Exporter JSON</button>
         <button id="btnImport">⬆ Importer JSON</button>
         <button id="btnClear">🗑 Tout effacer</button>
+        <button id="btnSeedVideos" title="Ajoute les équivalences primosophiques relevées dans les vidéos Vibration Nouvelle Terre (Mathieu Laveau)">🎬 Équivalences des vidéos</button>
         <input type="file" id="fileImport" accept="application/json" style="display:none">
         <span class="count" id="collCount"></span>
       </div>
@@ -267,7 +268,7 @@
 
   <!-- ============ SETTINGS ============ -->
   <div class="tabpane" id="tab-settings">
-    <div class="warn">⚠️ La table <b>Primosophie</b> est rétro-déduite (A=1 puis suite des nombres premiers) et vérifiée sur <code>bien=mal=69</code>. À confronter au livre de Mathieu Laveau. Vous pouvez la corriger ici — les modifications sont sauvegardées et recalculent tout.</div>
+    <div class="warn">✓ La table <b>Primosophie</b> (A=1 puis suite des nombres premiers) est <b>confirmée</b> : elle correspond lettre par lettre à la table affichée par Mathieu Laveau en vidéo (chaîne Vibration Nouvelle Terre), et retrouve ses 24 équivalences publiées (bien=mal=69, pyramide=264…). Vous pouvez la modifier ici — les modifications sont sauvegardées et recalculent tout.</div>
     <div class="card" style="margin-bottom:18px">
       <h2>Table Primosophie (éditable)</h2>
       <div class="editgrid" id="primoEdit"></div>
@@ -313,7 +314,7 @@
       <p>Cet atelier calcule la valeur numérique d'un mot français selon <b>4 systèmes</b> (Ordinal, Pythagore, Primosophie, KATY), accumule vos entrées localement (dans le navigateur) et repère automatiquement les <b>croisements</b> : entrées de même valeur.</p>
       <ul class="muted">
         <li><b>Ordinal</b> (A=1…Z=26) et <b>Pythagore</b> (lettres réduites 1–9 puis somme) : standards.</li>
-        <li><b>Primosophie</b> (Vermard / Laveau) : table déduite (A=1 puis nombres premiers), <b>à valider sur le livre</b>.</li>
+        <li><b>Primosophie</b> (Vermard / Laveau) : table A=1 puis nombres premiers, <b>confirmée</b> sur la table présentée par Laveau en vidéo.</li>
         <li><b>KATY</b> : système original « deux étages » (lettre → nombre → nombre écrit en lettres → somme).</li>
       </ul>
       <p class="muted" style="font-size:13px">⚠️ Un croisement n'est intéressant que sur les systèmes à <b>grande amplitude</b> (Primosophie, Ordinal) : deux grands nombres égaux, c'est rare. Sur les petits intervalles, tout se croise (biais de confirmation). À utiliser comme exploration symbolique, pas comme preuve. Détails dans <code>RAPPORT-RECHERCHE.md</code>.</p>
@@ -646,7 +647,7 @@ function renderCollection(){
       const hit=same[k+'|'+v]>1;
       return `<td class="val${hit?' cellhit':''}"${hit?' title="Croisement : une autre entrée a la même valeur"':''}>${v}</td>`;
     }).join('');
-    return `<tr><td class="word">${escapeHtml(e.text)} <span class="muted" style="font-size:11px">${{heb:'héb',grk:'grec',lat:''}[e.script]||''}</span></td>${tds}<td><button class="del" data-id="${e.id}" title="Supprimer">✕</button></td></tr>`;
+    return `<tr><td class="word">${escapeHtml(e.text)}${e.source?` <span title="Source : ${escapeHtml(e.source)}" style="font-size:12px;cursor:help">🎬</span>`:''} <span class="muted" style="font-size:11px">${{heb:'héb',grk:'grec',lat:''}[e.script]||''}</span></td>${tds}<td><button class="del" data-id="${e.id}" title="Supprimer">✕</button></td></tr>`;
   }).join('');
   collWrap.innerHTML=`<table class="collection"><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
   collWrap.querySelectorAll('.del').forEach(b=>b.onclick=()=>{
@@ -732,6 +733,28 @@ $('fileImport').onchange=ev=>{
     alert('Import réussi.');
   }catch(e){alert('Fichier invalide.');}};
   r.readAsText(f); ev.target.value='';
+};
+/* Équivalences primosophiques relevées dans les vidéos (vérifiées : toutes exactes avec la table par défaut) */
+const VIDEO_SEED = [
+  ['pyramide',264],['alignement',264],['recentrage',264],['en nous',264],['le christ',264],['la présence',264],['la vérité',264],
+  ['orion',205],['unité',205],['Dieu',102],['les Caires',249],['trois',249],['la croisée',231],['lumière',231],
+  ['la lumière',263],['équerre',263],['ligne',111],['delta',111],['les trois uns au centre',777],
+  ['la primosophie',431],['la sagesse du un',431],['connaître le un',431],['bien',69],['mal',69]
+];
+$('btnSeedVideos').onclick=()=>{
+  const src='Vibration Nouvelle Terre (M. Laveau)';
+  const existing=new Set(collection.map(e=>norm(e.text)));
+  let added=0; const off=[];
+  VIDEO_SEED.forEach(([txt,announced],i)=>{
+    const {script,values}=compute(txt,true);
+    if(values.primo!==announced) off.push(`${txt} : annoncé ${announced}, calculé ${values.primo}`);
+    if(existing.has(norm(txt))) return;
+    existing.add(norm(txt));
+    collection.push({id:Date.now()+'-v'+i,text:txt,script,ignore:true,values,source:src,announced});
+    added++;
+  });
+  save('collection',collection); renderCollection(); renderMatches();
+  alert(`${added} équivalence(s) ajoutée(s) (${VIDEO_SEED.length-added} déjà présentes).`+(off.length?`\n\n⚠ Écarts avec la table actuelle :\n`+off.join('\n'):`\nToutes les valeurs annoncées concordent avec la table actuelle.`));
 };
 $('btnClear').onclick=()=>{ if(confirm('Effacer toute la collection ?')){collection=[];save('collection',collection);renderCollection();renderMatches();} };
 $('btnRecompute').onclick=()=>{ recomputeAll(); flash($('btnRecompute'),'✓ Recalculé'); };

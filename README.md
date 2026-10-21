@@ -18,6 +18,6 @@ Application web autonome de calcul **multi-systèmes** de la valeur numérique d
 
 ## ⚠️ Note sur la primosophie
 
-La table officielle de Mathieu Laveau n'est pas publiée en ligne (réservée à son livre, 2024). La table fournie ici est **rétro-déduite** (A=1 puis suite des nombres premiers) et vérifiée sur les exemples connus `bien = mal = 69`. Elle est **éditable** dans l'onglet *Tables & réglages* — à confronter au livre.
+La table (A=1 puis suite des nombres premiers) est **confirmée** : elle correspond lettre par lettre à la table affichée par Mathieu Laveau dans ses vidéos (chaîne *Vibration Nouvelle Terre*), et retrouve les 24 équivalences qu'il y présente (`bien = mal = 69`, `pyramide = 264`, `orion = unité = 205`…). Ces équivalences sont importables d'un clic (bouton **🎬 Équivalences des vidéos**, onglet *Collection*). La table reste **éditable** dans *Tables & réglages*.
 
 Méthode complète, sources et précautions (biais de confirmation) dans [`RAPPORT-RECHERCHE.md`](RAPPORT-RECHERCHE.md).

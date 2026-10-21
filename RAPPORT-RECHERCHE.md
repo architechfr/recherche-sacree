@@ -11,7 +11,7 @@
 | Isopséphie grecque | **Élevée** | Système numéral milésien, incontesté |
 | Guématrie latine ordinale (A=1…Z=26) | **Élevée** | Standard trivial |
 | Réduction pythagoricienne/théosophique (1-9) | **Élevée** | Standard trivial |
-| **Primosophie (Vermard / Laveau)** | **Faible à moyenne** | Table rétro-déduite ; à valider sur le livre |
+| **Primosophie (Vermard / Laveau)** | **Élevée** | Table confirmée sur la diapositive de Laveau (vidéo) ; 24/24 équivalences retrouvées |
 
 ---
 
@@ -105,9 +105,9 @@ A=1, B=2, C=3 … Z=26.
 - **Origine** : terme attribué à **Georges Vermard** (années 2000) ; formalisé et diffusé par **Mathieu Laveau** (livre *Primosophie, le code sacré de la langue française*, Talma/Novimondi, 15 mars 2024, ISBN 9782377900664).
 - **Site officiel** : mathieulaveau.com (ne publie PAS la table — réservée au livre).
 
-### Table rétro-déduite (À VALIDER sur le livre)
+### Table (confirmée — diapositive « La Primosophie » de M. Laveau)
 
-Règle déduite : **A = 1**, puis **B…Z = suite des nombres premiers** (2, 3, 5, 7, 11…).
+Règle : **A = 1**, puis **B…Z = suite des nombres premiers** (2, 3, 5, 7, 11…).
 
 | A | B | C | D | E | F | G | H | I | J | K | L | M |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -122,12 +122,29 @@ Règle déduite : **A = 1**, puis **B…Z = suite des nombres premiers** (2, 3, 
 - `bien` = B+I+E+N = 2+19+7+41 = **69** ✓
 - `mal` = M+A+L = 37+1+31 = **69** ✓
 
-### Points à confirmer (non documentés publiquement)
+### Confirmation par les vidéos (2026-10-21)
+
+La table ci-dessus est identique, lettre par lettre, à celle affichée par Mathieu Laveau (diapositive « La Primosophie », chaîne *Vibration Nouvelle Terre*). Les 24 équivalences présentées dans ses vidéos sont toutes retrouvées par l'outil (articles compris, accents ignorés) :
+
+| Valeur | Expressions |
+|---|---|
+| 69 | bien, mal |
+| 102 | Dieu |
+| 111 | ligne, delta |
+| 205 | Orion, unité |
+| 231 | la croisée, lumière |
+| 249 | les Caires, trois |
+| 263 | la lumière, équerre |
+| 264 | pyramide, alignement, recentrage, en nous, le Christ, la présence, la vérité |
+| 431 | la primosophie, la sagesse du un, connaître le un |
+| 777 | les trois uns au centre |
+
+### Points encore non documentés
 1. Valeur exacte de **A** (1 dans la table ci-dessus — cohérent avec les exemples).
 2. Traitement des **accents, cédilles, tréma** (é→e ? ç→c ?) et des **espaces**.
 3. Lettres composées (Æ, Œ).
 
-> ⚠️ Tant que la table n'est pas confrontée au livre de Laveau, la primosophie reste la zone **incertaine**. L'outil rend la table **éditable** pour correction.
+> La table est confirmée ; restent à documenter les conventions sur les accents et les lettres composées. L'outil garde la table **éditable**.
 
 ---
 
